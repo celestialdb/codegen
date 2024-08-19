@@ -1,0 +1,21 @@
+{
+  "compilerOptions": {
+    "paths": {
+      "@/*": ["./test/fixtures/*"],
+      "@celestial/codegen-openapi": ["./src"]
+    },
+    "allowSyntheticDefaultImports": true,
+    "esModuleInterop": true,
+    "module": "ESNext",
+    "moduleResolution": "Node",
+    "strict": true,
+    "noEmit": true,
+    "target": "ESNext",
+    "jsx": "react",
+    "baseUrl": "..",
+    "resolveJsonModule": true,
+    "types": ["vitest/globals", "vitest/importMeta"],
+    "allowJs": true,
+    "checkJs": true
+  }
+}
