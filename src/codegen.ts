@@ -1,31 +1,158 @@
-import { factory } from './utils/factory';
-import ts from 'typescript';
+import { factory } from "./utils/factory";
+import ts from "typescript";
 
-const defaultEndpointBuilder = factory.createIdentifier('build');
+const defaultEndpointBuilder = factory.createIdentifier("build");
 
-export type ObjectPropertyDefinitions = Record<string, ts.Expression | undefined>;
+export type ObjectPropertyDefinitions = Record<
+  string,
+  ts.Expression | undefined
+>;
 export function generateObjectProperties(obj: ObjectPropertyDefinitions) {
   return Object.entries(obj)
     .filter(([_, v]) => v)
-    .map(([k, v]) => factory.createPropertyAssignment(factory.createIdentifier(k), v as ts.Expression));
+    .map(([k, v]) =>
+      factory.createPropertyAssignment(
+        factory.createIdentifier(k),
+        v as ts.Expression,
+      ),
+    );
 }
 
-export function generateImportNode(pkg: string, namedImports: Record<string, string>, defaultImportName?: string) {
+export function generateImportNode(
+  pkg: string,
+  namedImports: Record<string, string>,
+  defaultImportName?: string,
+) {
   return factory.createImportDeclaration(
     undefined,
     factory.createImportClause(
       false,
-      defaultImportName !== undefined ? factory.createIdentifier(defaultImportName) : undefined,
+      defaultImportName !== undefined
+        ? factory.createIdentifier(defaultImportName)
+        : undefined,
       factory.createNamedImports(
         Object.entries(namedImports).map(([propertyName, name]) =>
           factory.createImportSpecifier(
-            name === propertyName ? undefined : factory.createIdentifier(propertyName),
-            factory.createIdentifier(name)
-          )
-        )
-      )
+            name === propertyName
+              ? undefined
+              : factory.createIdentifier(propertyName),
+            factory.createIdentifier(name),
+          ),
+        ),
+      ),
     ),
-    factory.createStringLiteral(pkg)
+    factory.createStringLiteral(pkg),
+  );
+}
+
+export function generateCreateApiCall2({
+  endpointBuilder = defaultEndpointBuilder,
+  endpointDefinitions,
+  tag,
+}: {
+  endpointBuilder?: ts.Identifier;
+  endpointDefinitions: ts.ObjectLiteralExpression;
+  tag: boolean;
+}) {
+  const injectEndpointsObjectLiteralExpression =
+    factory.createObjectLiteralExpression(
+      generateObjectProperties({
+        endpoints: factory.createArrowFunction(
+          undefined,
+          undefined,
+          [
+            factory.createParameterDeclaration(
+              undefined,
+              undefined,
+              endpointBuilder,
+              undefined,
+              undefined,
+              undefined,
+            ),
+          ],
+          undefined,
+          factory.createToken(ts.SyntaxKind.EqualsGreaterThanToken),
+          factory.createParenthesizedExpression(endpointDefinitions),
+        ),
+        overrideExisting: factory.createFalse(),
+      }),
+      true,
+    );
+  if (tag) {
+    const enhanceEndpointsObjectLiteralExpression =
+      factory.createObjectLiteralExpression(
+        [
+          factory.createShorthandPropertyAssignment(
+            factory.createIdentifier("addTagTypes"),
+            undefined,
+          ),
+        ],
+        true,
+      );
+
+    const reducerNameExpression = factory.createObjectLiteralExpression(
+      [
+        factory.createShorthandPropertyAssignment(
+          factory.createIdentifier("reducerPath"),
+          undefined,
+        ),
+      ],
+      true,
+    );
+
+    return factory.createVariableStatement(
+      undefined,
+      factory.createVariableDeclarationList(
+        [
+          factory.createVariableDeclaration(
+            factory.createIdentifier("injectedRtkApi"),
+            undefined,
+            undefined,
+            factory.createCallExpression(
+              factory.createPropertyAccessExpression(
+                factory.createCallExpression(
+                  factory.createPropertyAccessExpression(
+                    factory.createIdentifier("api"),
+                    factory.createIdentifier("enhanceEndpoints"),
+                  ),
+                  undefined,
+                  [
+                    enhanceEndpointsObjectLiteralExpression,
+                    reducerNameExpression,
+                  ],
+                ),
+                factory.createIdentifier("injectEndpoints"),
+              ),
+              undefined,
+              [injectEndpointsObjectLiteralExpression],
+            ),
+          ),
+        ],
+        ts.NodeFlags.Const,
+      ),
+    );
+  }
+
+  return factory.createVariableStatement(
+    undefined,
+    factory.createVariableDeclarationList(
+      [
+        factory.createVariableDeclaration(
+          factory.createIdentifier("injectedRtkApi"),
+          undefined,
+          undefined,
+          factory.createCallExpression(
+            factory.createPropertyAccessExpression(
+              factory.createIdentifier("api"),
+              factory.createIdentifier("injectEndpoints"),
+            ),
+            undefined,
+            [injectEndpointsObjectLiteralExpression],
+          ),
+        ),
+      ],
+      ts.NodeFlags.Const,
+    ),
   );
 }
 
@@ -38,75 +165,65 @@ export function generateCreateApiCall({
   endpointDefinitions: ts.ObjectLiteralExpression;
   tag: boolean;
 }) {
-  const injectEndpointsObjectLiteralExpression = factory.createObjectLiteralExpression(
+  const baseQueryLiteralExpression = factory.createObjectLiteralExpression(
     generateObjectProperties({
-      endpoints: factory.createArrowFunction(
-        undefined,
-        undefined,
-        [factory.createParameterDeclaration(undefined, undefined, endpointBuilder, undefined, undefined, undefined)],
-        undefined,
-        factory.createToken(ts.SyntaxKind.EqualsGreaterThanToken),
-        factory.createParenthesizedExpression(endpointDefinitions)
-      ),
-      overrideExisting: factory.createFalse(),
+      baseUrl: factory.createStringLiteral("https://api.example.com"),
     }),
-    true
   );
-  if (tag) {
-    const enhanceEndpointsObjectLiteralExpression = factory.createObjectLiteralExpression(
-      [factory.createShorthandPropertyAssignment(factory.createIdentifier('addTagTypes'), undefined)],
-      true
-    );
-    return factory.createVariableStatement(
-      undefined,
-      factory.createVariableDeclarationList(
-        [
-          factory.createVariableDeclaration(
-            factory.createIdentifier('injectedRtkApi'),
-            undefined,
-            undefined,
-            factory.createCallExpression(
-              factory.createPropertyAccessExpression(
-                factory.createCallExpression(
-                  factory.createPropertyAccessExpression(
-                    factory.createIdentifier('api'),
-                    factory.createIdentifier('enhanceEndpoints')
-                  ),
-                  undefined,
-                  [enhanceEndpointsObjectLiteralExpression]
-                ),
-                factory.createIdentifier('injectEndpoints')
-              ),
+
+  const baseQueryCallExpression = factory.createCallExpression(
+    factory.createIdentifier("fetchBaseQuery"),
+    undefined,
+    [baseQueryLiteralExpression],
+  );
+
+  const endpointsObjectLiteralExpression =
+    factory.createObjectLiteralExpression(
+      generateObjectProperties({
+        reducerPath: factory.createStringLiteral("testReducer", true),
+        baseQuery: baseQueryCallExpression,
+        endpoints: factory.createArrowFunction(
+          undefined,
+          undefined,
+          [
+            factory.createParameterDeclaration(
               undefined,
-              [injectEndpointsObjectLiteralExpression]
-            )
-          ),
-        ],
-        ts.NodeFlags.Const
-      )
+              undefined,
+              endpointBuilder,
+              undefined,
+              undefined,
+              undefined,
+            ),
+          ],
+          undefined,
+          factory.createToken(ts.SyntaxKind.EqualsGreaterThanToken),
+          factory.createParenthesizedExpression(endpointDefinitions),
+        ),
+      }),
+      true,
     );
-  }
+
+  // const reducerObjectLiteralExpression = generateObjectProperties({reducerPath: undefined});
+  //
+  // const argumentsArray = factory.createObjectLiteralExpression(reducerObjectLiteralExpression, endpointsObjectLiteralExpression, true);
 
   return factory.createVariableStatement(
     undefined,
     factory.createVariableDeclarationList(
       [
         factory.createVariableDeclaration(
-          factory.createIdentifier('injectedRtkApi'),
+          factory.createIdentifier("injectedRtkApi"),
           undefined,
           undefined,
           factory.createCallExpression(
-            factory.createPropertyAccessExpression(
-              factory.createIdentifier('api'),
-              factory.createIdentifier('injectEndpoints')
-            ),
+            factory.createIdentifier("createApi"),
             undefined,
-            [injectEndpointsObjectLiteralExpression]
-          )
+            [endpointsObjectLiteralExpression],
+          ),
         ),
       ],
-      ts.NodeFlags.Const
-    )
+      ts.NodeFlags.Const,
+    ),
   );
 }
 
@@ -121,7 +238,7 @@ export function generateEndpointDefinition({
   tags,
 }: {
   operationName: string;
-  type: 'query' | 'mutation';
+  type: "query" | "mutation";
   Response: ts.TypeReferenceNode;
   QueryArg: ts.TypeReferenceNode;
   queryFn: ts.Expression;
@@ -129,23 +246,33 @@ export function generateEndpointDefinition({
   extraEndpointsProps: ObjectPropertyDefinitions;
   tags: string[];
 }) {
-  const objectProperties = generateObjectProperties({ query: queryFn, ...extraEndpointsProps });
+  const objectProperties = generateObjectProperties({
+    query: queryFn,
+    ...extraEndpointsProps,
+  });
   if (tags.length > 0) {
     objectProperties.push(
       factory.createPropertyAssignment(
-        factory.createIdentifier(type === 'query' ? 'providesTags' : 'invalidatesTags'),
-        factory.createArrayLiteralExpression(tags.map((tag) => factory.createStringLiteral(tag), false))
-      )
+        factory.createIdentifier(
+          type === "query" ? "providesTags" : "invalidatesTags",
+        ),
+        factory.createArrayLiteralExpression(
+          tags.map((tag) => factory.createStringLiteral(tag), false),
+        ),
+      ),
     );
   }
   return factory.createPropertyAssignment(
     factory.createIdentifier(operationName),
 
     factory.createCallExpression(
-      factory.createPropertyAccessExpression(endpointBuilder, factory.createIdentifier(type)),
+      factory.createPropertyAccessExpression(
+        endpointBuilder,
+        factory.createIdentifier(type),
+      ),
       [Response, QueryArg],
-      [factory.createObjectLiteralExpression(objectProperties, true)]
-    )
+      [factory.createObjectLiteralExpression(objectProperties, true)],
+    ),
   );
 }
 
@@ -155,19 +282,24 @@ export function generateTagTypes({ addTagTypes }: { addTagTypes: string[] }) {
     factory.createVariableDeclarationList(
       [
         factory.createVariableDeclaration(
-          factory.createIdentifier('addTagTypes'),
+          factory.createIdentifier("addTagTypes"),
           undefined,
           undefined,
           factory.createAsExpression(
             factory.createArrayLiteralExpression(
-              addTagTypes.map((tagType) => factory.createStringLiteral(tagType)),
-              true
+              addTagTypes.map((tagType) =>
+                factory.createStringLiteral(tagType),
+              ),
+              true,
             ),
-            factory.createTypeReferenceNode(factory.createIdentifier('const'), undefined)
-          )
+            factory.createTypeReferenceNode(
+              factory.createIdentifier("const"),
+              undefined,
+            ),
+          ),
         ),
       ],
-      ts.NodeFlags.Const
-    )
+      ts.NodeFlags.Const,
+    ),
   );
 }

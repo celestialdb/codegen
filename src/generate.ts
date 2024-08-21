@@ -1,5 +1,5 @@
-import { camelCase } from 'lodash';
-import path from 'node:path';
+import { camelCase } from "lodash";
+import path from "node:path";
 import ApiGenerator, {
   getOperationName as _getOperationName,
   getReferenceName,
@@ -9,28 +9,53 @@ import ApiGenerator, {
   createQuestionToken,
   isValidIdentifier,
   keywordType,
-} from 'oazapfts/generate';
-import type { OpenAPIV3 } from 'openapi-types';
-import ts from 'typescript';
-import type { ObjectPropertyDefinitions } from './codegen';
-import { generateCreateApiCall, generateEndpointDefinition, generateImportNode, generateTagTypes } from './codegen';
-import { generateReactHooks } from './generators/react-hooks';
-import type { EndpointMatcher, EndpointOverrides, GenerationOptions, OperationDefinition, TextMatcher } from './types';
-import { capitalize, getOperationDefinitions, getV3Doc, removeUndefined, isQuery as testIsQuery } from './utils';
-import { factory } from './utils/factory';
+} from "oazapfts/generate";
+import type { OpenAPIV3 } from "openapi-types";
+import ts from "typescript";
+import type { ObjectPropertyDefinitions } from "./codegen";
+import {
+  generateCreateApiCall,
+  generateEndpointDefinition,
+  generateImportNode,
+  generateTagTypes,
+} from "./codegen";
+import { generateReactHooks } from "./generators/react-hooks";
+import type {
+  EndpointMatcher,
+  EndpointOverrides,
+  GenerationOptions,
+  OperationDefinition,
+  TextMatcher,
+} from "./types";
+import {
+  capitalize,
+  getOperationDefinitions,
+  getV3Doc,
+  removeUndefined,
+  isQuery as testIsQuery,
+} from "./utils";
+import { factory } from "./utils/factory";
+import { createSelector } from "@reduxjs/toolkit";
 
-const generatedApiName = 'injectedRtkApi';
+const generatedApiName = "injectedRtkApi";
 
 function defaultIsDataResponse(code: string) {
   const parsedCode = Number(code);
   return !Number.isNaN(parsedCode) && parsedCode >= 200 && parsedCode < 300;
 }
 
-function getOperationName({ verb, path, operation }: Pick<OperationDefinition, 'verb' | 'path' | 'operation'>) {
+function getOperationName({
+  verb,
+  path,
+  operation,
+}: Pick<OperationDefinition, "verb" | "path" | "operation">) {
   return _getOperationName(verb, path, operation.operationId);
 }
 
-function getTags({ verb, pathItem }: Pick<OperationDefinition, 'verb' | 'pathItem'>): string[] {
+function getTags({
+  verb,
+  pathItem,
+}: Pick<OperationDefinition, "verb" | "pathItem">): string[] {
   return verb ? pathItem[verb]?.tags || [] : [];
 }
 
@@ -39,13 +64,16 @@ function patternMatches(pattern?: TextMatcher) {
   return function matcher(operationName: string) {
     if (!pattern) return true;
     return filters.some((filter) =>
-      typeof filter === 'string' ? filter === operationName : filter?.test(operationName)
+      typeof filter === "string"
+        ? filter === operationName
+        : filter?.test(operationName),
     );
   };
 }
 
 function operationMatches(pattern?: EndpointMatcher) {
-  const checkMatch = typeof pattern === 'function' ? pattern : patternMatches(pattern);
+  const checkMatch =
+    typeof pattern === "function" ? pattern : patternMatches(pattern);
   return function matcher(operationDefinition: OperationDefinition) {
     if (!pattern) return true;
     const operationName = getOperationName(operationDefinition);
@@ -53,14 +81,19 @@ function operationMatches(pattern?: EndpointMatcher) {
   };
 }
 
-function withQueryComment<T extends ts.Node>(node: T, def: QueryArgDefinition, hasTrailingNewLine: boolean): T {
-  const comment = def.origin === 'param' ? def.param.description : def.body.description;
+function withQueryComment<T extends ts.Node>(
+  node: T,
+  def: QueryArgDefinition,
+  hasTrailingNewLine: boolean,
+): T {
+  const comment =
+    def.origin === "param" ? def.param.description : def.body.description;
   if (comment) {
     return ts.addSyntheticLeadingComment(
       node,
       ts.SyntaxKind.MultiLineCommentTrivia,
       `* ${comment} `,
-      hasTrailingNewLine
+      hasTrailingNewLine,
     );
   }
   return node;
@@ -68,19 +101,21 @@ function withQueryComment<T extends ts.Node>(node: T, def: QueryArgDefinition, h
 
 export function getOverrides(
   operation: OperationDefinition,
-  endpointOverrides?: EndpointOverrides[]
+  endpointOverrides?: EndpointOverrides[],
 ): EndpointOverrides | undefined {
-  return endpointOverrides?.find((override) => operationMatches(override.pattern)(operation));
+  return endpointOverrides?.find((override) =>
+    operationMatches(override.pattern)(operation),
+  );
 }
 
 export async function generateApi(
   spec: string,
   {
     apiFile,
-    apiImport = 'api',
-    exportName = 'enhancedApi',
-    argSuffix = 'ApiArg',
-    responseSuffix = 'ApiResponse',
+    apiImport = "api",
+    exportName = "enhancedApi",
+    argSuffix = "ApiArg",
+    responseSuffix = "ApiResponse",
     hooks = false,
     tag = false,
     outputFile,
@@ -91,7 +126,7 @@ export async function generateApi(
     flattenArg = false,
     useEnumType = false,
     mergeReadWriteOnly = false,
-  }: GenerationOptions
+  }: GenerationOptions,
 ) {
   const v3Doc = await getV3Doc(spec);
 
@@ -106,19 +141,26 @@ export async function generateApi(
     apiGen.preprocessComponents(apiGen.spec.components.schemas);
   }
 
-  const operationDefinitions = getOperationDefinitions(v3Doc).filter(operationMatches(filterEndpoints));
+  const operationDefinitions = getOperationDefinitions(v3Doc).filter(
+    operationMatches(filterEndpoints),
+  );
 
   const resultFile = ts.createSourceFile(
-    'someFileName.ts',
-    '',
+    "someFileName.ts",
+    "",
     ts.ScriptTarget.Latest,
     /*setParentNodes*/ false,
-    ts.ScriptKind.TS
+    ts.ScriptKind.TS,
   );
   const printer = ts.createPrinter({ newLine: ts.NewLineKind.LineFeed });
 
-  const interfaces: Record<string, ts.InterfaceDeclaration | ts.TypeAliasDeclaration> = {};
-  function registerInterface(declaration: ts.InterfaceDeclaration | ts.TypeAliasDeclaration) {
+  const interfaces: Record<
+    string,
+    ts.InterfaceDeclaration | ts.TypeAliasDeclaration
+  > = {};
+  function registerInterface(
+    declaration: ts.InterfaceDeclaration | ts.TypeAliasDeclaration,
+  ) {
     const name = declaration.name.escapedText.toString();
     if (name in interfaces) {
       throw new Error(`interface/type alias ${name} already registered`);
@@ -129,20 +171,40 @@ export async function generateApi(
 
   if (outputFile) {
     outputFile = path.resolve(process.cwd(), outputFile);
-    if (apiFile.startsWith('.')) {
+    if (apiFile.startsWith(".")) {
       apiFile = path.relative(path.dirname(outputFile), apiFile);
-      apiFile = apiFile.replace(/\\/g, '/');
-      if (!apiFile.startsWith('.')) apiFile = `./${apiFile}`;
+      apiFile = apiFile.replace(/\\/g, "/");
+      if (!apiFile.startsWith(".")) apiFile = `./${apiFile}`;
     }
   }
-  apiFile = apiFile.replace(/\.[jt]sx?$/, '');
+  apiFile = apiFile.replace(/\.[jt]sx?$/, "");
 
+  // import { createSelector, createEntityAdapter, createSlice, isAnyOf } from '@reduxjs/toolkit'
+  // import { createApi, fetchBaseQuery } from '@reduxjs/toolkit/query/react'
   return printer.printNode(
     ts.EmitHint.Unspecified,
     factory.createSourceFile(
       [
-        generateImportNode(apiFile, { [apiImport]: 'api' }),
-        ...(tag ? [generateTagTypes({ addTagTypes: extractAllTagTypes({ operationDefinitions }) })] : []),
+        generateImportNode("@reduxjs/toolkit", {
+          ["createSlice"]: "createSlice",
+        }),
+        generateImportNode("@reduxjs/toolkit", {
+          ["createEntityAdapter"]: "createEntityAdapter",
+        }),
+        generateImportNode("@reduxjs/toolkit/query/react", {
+          ["createApi"]: "createApi",
+        }),
+        generateImportNode("@reduxjs/toolkit/query/react", {
+          ["fetchBaseQuery"]: "fetchBaseQuery",
+        }),
+        generateImportNode(apiFile, { [apiImport]: "api" }),
+        ...(tag
+          ? [
+              generateTagTypes({
+                addTagTypes: extractAllTagTypes({ operationDefinitions }),
+              }),
+            ]
+          : []),
         generateCreateApiCall({
           tag,
           endpointDefinitions: factory.createObjectLiteralExpression(
@@ -150,9 +212,9 @@ export async function generateApi(
               generateEndpoint({
                 operationDefinition,
                 overrides: getOverrides(operationDefinition, endpointOverrides),
-              })
+              }),
             ),
-            true
+            true,
           ),
         }),
         factory.createExportDeclaration(
@@ -161,10 +223,10 @@ export async function generateApi(
           factory.createNamedExports([
             factory.createExportSpecifier(
               factory.createIdentifier(generatedApiName),
-              factory.createIdentifier(exportName)
+              factory.createIdentifier(exportName),
             ),
           ]),
-          undefined
+          undefined,
         ),
         ...Object.values(interfaces),
         ...apiGen.aliases,
@@ -181,12 +243,16 @@ export async function generateApi(
           : []),
       ],
       factory.createToken(ts.SyntaxKind.EndOfFileToken),
-      ts.NodeFlags.None
+      ts.NodeFlags.None,
     ),
-    resultFile
+    resultFile,
   );
 
-  function extractAllTagTypes({ operationDefinitions }: { operationDefinitions: OperationDefinition[] }) {
+  function extractAllTagTypes({
+    operationDefinitions,
+  }: {
+    operationDefinitions: OperationDefinition[];
+  }) {
     const allTagTypes = new Set<string>();
 
     for (const operationDefinition of operationDefinitions) {
@@ -216,8 +282,10 @@ export async function generateApi(
     const tags = tag ? getTags({ verb, pathItem }) : [];
     const isQuery = testIsQuery(verb, overrides);
 
-    const returnsJson = apiGen.getResponseType(responses) === 'json';
-    let ResponseType: ts.TypeNode = factory.createKeywordTypeNode(ts.SyntaxKind.UnknownKeyword);
+    const returnsJson = apiGen.getResponseType(responses) === "json";
+    let ResponseType: ts.TypeNode = factory.createKeywordTypeNode(
+      ts.SyntaxKind.UnknownKeyword,
+    );
     if (returnsJson) {
       const returnTypes = Object.entries(responses || {})
         .map(
@@ -225,18 +293,20 @@ export async function generateApi(
             [
               code,
               apiGen.resolve(response),
-              apiGen.getTypeFromResponse(response, 'readOnly') ||
+              apiGen.getTypeFromResponse(response, "readOnly") ||
                 factory.createKeywordTypeNode(ts.SyntaxKind.UndefinedKeyword),
-            ] as const
+            ] as const,
         )
-        .filter(([status, response]) => isDataResponse(status, apiGen.resolve(response), responses || {}))
+        .filter(([status, response]) =>
+          isDataResponse(status, apiGen.resolve(response), responses || {}),
+        )
         .map(([code, response, type]) =>
           ts.addSyntheticLeadingComment(
             { ...type },
             ts.SyntaxKind.MultiLineCommentTrivia,
             `* status ${code} ${response.description} `,
-            false
-          )
+            false,
+          ),
         )
         .filter((type) => type !== keywordType.void);
       if (returnTypes.length > 0) {
@@ -250,9 +320,9 @@ export async function generateApi(
           [factory.createModifier(ts.SyntaxKind.ExportKeyword)],
           capitalize(operationName + responseSuffix),
           undefined,
-          ResponseType
-        )
-      ).name
+          ResponseType,
+        ),
+      ).name,
     );
 
     const parameters = supportDeepObjects([
@@ -284,10 +354,14 @@ export async function generateApi(
     for (const param of parameters) {
       const name = generateName(param.name, param.in);
       queryArg[name] = {
-        origin: 'param',
+        origin: "param",
         name,
         originalName: param.name,
-        type: apiGen.getTypeFromSchema(isReference(param) ? param : param.schema, undefined, 'writeOnly'),
+        type: apiGen.getTypeFromSchema(
+          isReference(param) ? param : param.schema,
+          undefined,
+          "writeOnly",
+        ),
         required: param.required,
         param,
       };
@@ -297,30 +371,43 @@ export async function generateApi(
       const body = apiGen.resolve(requestBody);
       const schema = apiGen.getSchemaFromContent(body.content);
       const type = apiGen.getTypeFromSchema(schema);
-      let schemaName
-      if (typeof schema === 'object' && schema !== null && !Array.isArray(schema)) {
-          schemaName = camelCase(
-              (type as any).name || getReferenceName(schema) || ('title' in schema && schema.title) || 'body'
-          );
+      let schemaName;
+      if (
+        typeof schema === "object" &&
+        schema !== null &&
+        !Array.isArray(schema)
+      ) {
+        schemaName = camelCase(
+          (type as any).name ||
+            getReferenceName(schema) ||
+            ("title" in schema && schema.title) ||
+            "body",
+        );
       } else {
-           schemaName = camelCase(
-              (type as any).name || getReferenceName(schema) || 'body')
+        schemaName = camelCase(
+          (type as any).name || getReferenceName(schema) || "body",
+        );
       }
-      const name = generateName(schemaName in queryArg ? 'body' : schemaName, 'body');
+      const name = generateName(
+        schemaName in queryArg ? "body" : schemaName,
+        "body",
+      );
 
       queryArg[name] = {
-        origin: 'body',
+        origin: "body",
         name,
         originalName: schemaName,
-        type: apiGen.getTypeFromSchema(schema, undefined, 'writeOnly'),
+        type: apiGen.getTypeFromSchema(schema, undefined, "writeOnly"),
         required: true,
         body,
       };
     }
 
     const propertyName = (name: string | ts.PropertyName): ts.PropertyName => {
-      if (typeof name === 'string') {
-        return isValidIdentifier(name) ? factory.createIdentifier(name) : factory.createStringLiteral(name);
+      if (typeof name === "string") {
+        return isValidIdentifier(name)
+          ? factory.createIdentifier(name)
+          : factory.createStringLiteral(name);
       }
       return name;
     };
@@ -337,7 +424,11 @@ export async function generateApi(
           undefined,
           queryArgValues.length > 0
             ? isFlatArg
-              ? withQueryComment({ ...queryArgValues[0].type }, queryArgValues[0], false)
+              ? withQueryComment(
+                  { ...queryArgValues[0].type },
+                  queryArgValues[0],
+                  false,
+                )
               : factory.createTypeLiteralNode(
                   queryArgValues.map((def) =>
                     withQueryComment(
@@ -345,24 +436,29 @@ export async function generateApi(
                         undefined,
                         propertyName(def.name),
                         createQuestionToken(!def.required),
-                        def.type
+                        def.type,
                       ),
                       def,
-                      true
-                    )
-                  )
+                      true,
+                    ),
+                  ),
                 )
-            : factory.createKeywordTypeNode(ts.SyntaxKind.VoidKeyword)
-        )
-      ).name
+            : factory.createKeywordTypeNode(ts.SyntaxKind.VoidKeyword),
+        ),
+      ).name,
     );
 
     return generateEndpointDefinition({
       operationName,
-      type: isQuery ? 'query' : 'mutation',
+      type: isQuery ? "query" : "mutation",
       Response: ResponseTypeName,
       QueryArg,
-      queryFn: generateQueryFn({ operationDefinition, queryArg, isQuery, isFlatArg }),
+      queryFn: generateQueryFn({
+        operationDefinition,
+        queryArg,
+        isQuery,
+        isFlatArg,
+      }),
       extraEndpointsProps: isQuery
         ? generateQueryEndpointProps({ operationDefinition })
         : generateMutationEndpointProps({ operationDefinition }),
@@ -383,15 +479,22 @@ export async function generateApi(
   }) {
     const { path, verb } = operationDefinition;
 
-    const bodyParameter = Object.values(queryArg).find((def) => def.origin === 'body');
+    const bodyParameter = Object.values(queryArg).find(
+      (def) => def.origin === "body",
+    );
 
-    const rootObject = factory.createIdentifier('queryArg');
+    const rootObject = factory.createIdentifier("queryArg");
 
     function pickParams(paramIn: string) {
-      return Object.values(queryArg).filter((def) => def.origin === 'param' && def.param.in === paramIn);
+      return Object.values(queryArg).filter(
+        (def) => def.origin === "param" && def.param.in === paramIn,
+      );
     }
 
-    function createObjectLiteralProperty(parameters: QueryArgDefinition[], propertyName: string) {
+    function createObjectLiteralProperty(
+      parameters: QueryArgDefinition[],
+      propertyName: string,
+    ) {
       return parameters.length === 0
         ? undefined
         : factory.createPropertyAssignment(
@@ -401,11 +504,13 @@ export async function generateApi(
                 (param) =>
                   createPropertyAssignment(
                     param.originalName,
-                    isFlatArg ? rootObject : accessProperty(rootObject, param.name)
+                    isFlatArg
+                      ? rootObject
+                      : accessProperty(rootObject, param.name),
                   ),
-                true
-              )
-            )
+                true,
+              ),
+            ),
           );
     }
 
@@ -413,7 +518,16 @@ export async function generateApi(
       undefined,
       undefined,
       Object.keys(queryArg).length
-        ? [factory.createParameterDeclaration(undefined, undefined, rootObject, undefined, undefined, undefined)]
+        ? [
+            factory.createParameterDeclaration(
+              undefined,
+              undefined,
+              rootObject,
+              undefined,
+              undefined,
+              undefined,
+            ),
+          ]
         : [],
       undefined,
       factory.createToken(ts.SyntaxKind.EqualsGreaterThanToken),
@@ -421,66 +535,89 @@ export async function generateApi(
         factory.createObjectLiteralExpression(
           [
             factory.createPropertyAssignment(
-              factory.createIdentifier('url'),
-              generatePathExpression(path, pickParams('path'), rootObject, isFlatArg)
+              factory.createIdentifier("url"),
+              generatePathExpression(
+                path,
+                pickParams("path"),
+                rootObject,
+                isFlatArg,
+              ),
             ),
-            isQuery && verb.toUpperCase() === 'GET'
+            isQuery && verb.toUpperCase() === "GET"
               ? undefined
               : factory.createPropertyAssignment(
-                  factory.createIdentifier('method'),
-                  factory.createStringLiteral(verb.toUpperCase())
+                  factory.createIdentifier("method"),
+                  factory.createStringLiteral(verb.toUpperCase()),
                 ),
             bodyParameter === undefined
               ? undefined
               : factory.createPropertyAssignment(
-                  factory.createIdentifier('body'),
+                  factory.createIdentifier("body"),
                   isFlatArg
                     ? rootObject
-                    : factory.createPropertyAccessExpression(rootObject, factory.createIdentifier(bodyParameter.name))
+                    : factory.createPropertyAccessExpression(
+                        rootObject,
+                        factory.createIdentifier(bodyParameter.name),
+                      ),
                 ),
-            createObjectLiteralProperty(pickParams('cookie'), 'cookies'),
-            createObjectLiteralProperty(pickParams('header'), 'headers'),
-            createObjectLiteralProperty(pickParams('query'), 'params'),
+            createObjectLiteralProperty(pickParams("cookie"), "cookies"),
+            createObjectLiteralProperty(pickParams("header"), "headers"),
+            createObjectLiteralProperty(pickParams("query"), "params"),
           ].filter(removeUndefined),
-          false
-        )
-      )
+          false,
+        ),
+      ),
     );
   }
 
   // eslint-disable-next-line no-empty-pattern
-  function generateQueryEndpointProps({}: { operationDefinition: OperationDefinition }): ObjectPropertyDefinitions {
+  function generateQueryEndpointProps({}: {
+    operationDefinition: OperationDefinition;
+  }): ObjectPropertyDefinitions {
     return {}; /* TODO needs implementation - skip for now */
   }
 
   // eslint-disable-next-line no-empty-pattern
-  function generateMutationEndpointProps({}: { operationDefinition: OperationDefinition }): ObjectPropertyDefinitions {
+  function generateMutationEndpointProps({}: {
+    operationDefinition: OperationDefinition;
+  }): ObjectPropertyDefinitions {
     return {}; /* TODO needs implementation - skip for now */
   }
 }
 
 function accessProperty(rootObject: ts.Identifier, propertyName: string) {
   return isValidIdentifier(propertyName)
-    ? factory.createPropertyAccessExpression(rootObject, factory.createIdentifier(propertyName))
-    : factory.createElementAccessExpression(rootObject, factory.createStringLiteral(propertyName));
+    ? factory.createPropertyAccessExpression(
+        rootObject,
+        factory.createIdentifier(propertyName),
+      )
+    : factory.createElementAccessExpression(
+        rootObject,
+        factory.createStringLiteral(propertyName),
+      );
 }
 
 function generatePathExpression(
   path: string,
   pathParameters: QueryArgDefinition[],
   rootObject: ts.Identifier,
-  isFlatArg: boolean
+  isFlatArg: boolean,
 ) {
   const expressions: Array<[string, string]> = [];
 
-  const head = path.replace(/\{(.*?)}(.*?)(?=\{|$)/g, (_, expression, literal) => {
-    const param = pathParameters.find((p) => p.originalName === expression);
-    if (!param) {
-      throw new Error(`path parameter ${expression} does not seem to be defined in '${path}'!`);
-    }
-    expressions.push([param.name, literal]);
-    return '';
-  });
+  const head = path.replace(
+    /\{(.*?)}(.*?)(?=\{|$)/g,
+    (_, expression, literal) => {
+      const param = pathParameters.find((p) => p.originalName === expression);
+      if (!param) {
+        throw new Error(
+          `path parameter ${expression} does not seem to be defined in '${path}'!`,
+        );
+      }
+      expressions.push([param.name, literal]);
+      return "";
+    },
+  );
 
   return expressions.length
     ? factory.createTemplateExpression(
@@ -490,9 +627,9 @@ function generatePathExpression(
             isFlatArg ? rootObject : accessProperty(rootObject, prop),
             index === expressions.length - 1
               ? factory.createTemplateTail(literal)
-              : factory.createTemplateMiddle(literal)
-          )
-        )
+              : factory.createTemplateMiddle(literal),
+          ),
+        ),
       )
     : factory.createNoSubstitutionTemplateLiteral(head);
 }
@@ -505,11 +642,11 @@ type QueryArgDefinition = {
   param?: OpenAPIV3.ParameterObject;
 } & (
   | {
-      origin: 'param';
+      origin: "param";
       param: OpenAPIV3.ParameterObject;
     }
   | {
-      origin: 'body';
+      origin: "body";
       body: OpenAPIV3.RequestBodyObject;
     }
 );
