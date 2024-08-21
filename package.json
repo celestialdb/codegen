@@ -1,20 +1,18 @@
 {
   "name": "@celestial_labs/codegen-openapi",
-  "version": "0.0.2",
+  "version": "0.0.8",
   "main": "lib/index.js",
   "types": "lib/index.d.ts",
   "bin": {
-    "rtk-query-codegen-openapi": "lib/bin/cli.js"
+    "celestial_labs-codegen-openapi": "lib/bin/cli.js"
   },
   "scripts": {
-    "build": "yarn clean && tsc && chmod +x lib/bin/cli.js",
-    "clean": "rimraf lib",
-    "prepare": "yarn build && chmod +x lib/bin/cli.js",
+    "build": "tsc && chmod +x lib/bin/cli.js",
+    "prepare": "npm run build && chmod +x ./lib/bin/cli.js",
     "format": "prettier --write \"src/**/*.ts\"",
-    "test:update": "vitest --run --update",
+    "test:update": "jest --runInBand --updateSnapshot",
     "test:update:enum": "lib/bin/cli.js test/config.example.enum.ts",
-    "test": "vitest --run",
-    "test:watch": "vitest --watch",
+    "test": "jest --runInBand",
     "cli": "esr src/bin/cli.ts"
   },
   "files": [
@@ -53,7 +51,8 @@
     "prettier": "^3.2.5",
     "semver": "^7.3.5",
     "swagger2openapi": "^7.0.4",
-    "typescript": "^5.3.3"
+    "typescript": "^5.3.3",
+    "yarn": "^1.22.22"
   },
   "husky": {
     "hooks": {
