@@ -90,16 +90,6 @@ export function generateCreateApiCall2({
         true,
       );
 
-    const reducerNameExpression = factory.createObjectLiteralExpression(
-      [
-        factory.createShorthandPropertyAssignment(
-          factory.createIdentifier("reducerPath"),
-          undefined,
-        ),
-      ],
-      true,
-    );
-
     return factory.createVariableStatement(
       undefined,
       factory.createVariableDeclarationList(
@@ -116,10 +106,7 @@ export function generateCreateApiCall2({
                     factory.createIdentifier("enhanceEndpoints"),
                   ),
                   undefined,
-                  [
-                    enhanceEndpointsObjectLiteralExpression,
-                    reducerNameExpression,
-                  ],
+                  [enhanceEndpointsObjectLiteralExpression],
                 ),
                 factory.createIdentifier("injectEndpoints"),
               ),
@@ -203,10 +190,6 @@ export function generateCreateApiCall({
       true,
     );
 
-  // const reducerObjectLiteralExpression = generateObjectProperties({reducerPath: undefined});
-  //
-  // const argumentsArray = factory.createObjectLiteralExpression(reducerObjectLiteralExpression, endpointsObjectLiteralExpression, true);
-
   return factory.createVariableStatement(
     undefined,
     factory.createVariableDeclarationList(
@@ -219,6 +202,51 @@ export function generateCreateApiCall({
             factory.createIdentifier("createApi"),
             undefined,
             [endpointsObjectLiteralExpression],
+          ),
+        ),
+      ],
+      ts.NodeFlags.Const,
+    ),
+  );
+}
+
+export function generateCreateEntityAdapterCall() {
+  return factory.createVariableStatement(
+    undefined,
+    factory.createVariableDeclarationList(
+      [
+        factory.createVariableDeclaration(
+          factory.createIdentifier("entityAdapter"),
+          undefined,
+          undefined,
+          factory.createCallExpression(
+            factory.createIdentifier("createEntityAdapter"),
+            undefined,
+            [],
+          ),
+        ),
+      ],
+      ts.NodeFlags.Const,
+    ),
+  );
+}
+
+export function generateInitializeInitialState() {
+  return factory.createVariableStatement(
+    undefined,
+    factory.createVariableDeclarationList(
+      [
+        factory.createVariableDeclaration(
+          factory.createIdentifier("initialState"),
+          undefined,
+          undefined,
+          factory.createCallExpression(
+            factory.createPropertyAccessExpression(
+              factory.createIdentifier("entityAdapter"),
+              factory.createIdentifier("getInitialState"),
+            ),
+            undefined,
+            [],
           ),
         ),
       ],

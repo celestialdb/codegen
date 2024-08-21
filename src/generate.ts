@@ -12,7 +12,11 @@ import ApiGenerator, {
 } from "oazapfts/generate";
 import type { OpenAPIV3 } from "openapi-types";
 import ts from "typescript";
-import type { ObjectPropertyDefinitions } from "./codegen";
+import {
+  generateCreateEntityAdapterCall,
+  generateInitializeInitialState,
+  ObjectPropertyDefinitions,
+} from "./codegen";
 import {
   generateCreateApiCall,
   generateEndpointDefinition,
@@ -198,6 +202,8 @@ export async function generateApi(
           ["fetchBaseQuery"]: "fetchBaseQuery",
         }),
         generateImportNode(apiFile, { [apiImport]: "api" }),
+        generateCreateEntityAdapterCall(),
+        generateInitializeInitialState(),
         ...(tag
           ? [
               generateTagTypes({
