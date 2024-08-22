@@ -39,8 +39,7 @@ import {
   isQuery as testIsQuery,
 } from "./utils";
 import { factory } from "./utils/factory";
-
-const generatedApiName = "injectedRtkApi";
+import { generateApiSliceName } from "./utils/naming";
 
 function defaultIsDataResponse(code: string) {
   const parsedCode = Number(code);
@@ -114,14 +113,12 @@ export function getOverrides(
 export async function generateApi(
   spec: string,
   {
-    apiFile,
-    apiImport = "api",
-    exportName = "enhancedApi",
+    key,
+    endpointToIndex,
     argSuffix = "ApiArg",
     responseSuffix = "ApiResponse",
     hooks = false,
     tag = false,
-    outputFile,
     isDataResponse = defaultIsDataResponse,
     filterEndpoints,
     endpointOverrides,
@@ -172,15 +169,15 @@ export async function generateApi(
     return declaration;
   }
 
-  if (outputFile) {
-    outputFile = path.resolve(process.cwd(), outputFile);
-    if (apiFile.startsWith(".")) {
-      apiFile = path.relative(path.dirname(outputFile), apiFile);
-      apiFile = apiFile.replace(/\\/g, "/");
-      if (!apiFile.startsWith(".")) apiFile = `./${apiFile}`;
-    }
-  }
-  apiFile = apiFile.replace(/\.[jt]sx?$/, "");
+  // if (outputFile) {
+  //   outputFile = path.resolve(process.cwd(), outputFile);
+  //   if (apiFile.startsWith(".")) {
+  //     apiFile = path.relative(path.dirname(outputFile), apiFile);
+  //     apiFile = apiFile.replace(/\\/g, "/");
+  //     if (!apiFile.startsWith(".")) apiFile = `./${apiFile}`;
+  //   }
+  // }
+  // apiFile = apiFile.replace(/\.[jt]sx?$/, "");
 
   // import { createSelector, createEntityAdapter, createSlice, isAnyOf } from '@reduxjs/toolkit'
   // import { createApi, fetchBaseQuery } from '@reduxjs/toolkit/query/react'
@@ -199,8 +196,8 @@ export async function generateApi(
         }),
         generateCreateEntityAdapterCall(),
         generateInitializeInitialState(),
-        ...generateBaseSelectors(),
         generateCreateApiCall({
+          identifier: key,
           tags: tag ? extractAllTagTypes({ operationDefinitions }) : [],
           endpointDefinitions: factory.createObjectLiteralExpression(
             operationDefinitions.map((operationDefinition) =>
@@ -212,24 +209,14 @@ export async function generateApi(
             true,
           ),
         }),
-        factory.createExportDeclaration(
-          undefined,
-          false,
-          factory.createNamedExports([
-            factory.createExportSpecifier(
-              factory.createIdentifier(generatedApiName),
-              factory.createIdentifier(exportName),
-            ),
-          ]),
-          undefined,
-        ),
+        ...generateBaseSelectors(key, endpointToIndex),
         ...Object.values(interfaces),
         ...apiGen.aliases,
         ...apiGen.enumAliases,
         ...(hooks
           ? [
               generateReactHooks({
-                exportName: generatedApiName,
+                exportName: generateApiSliceName(key),
                 operationDefinitions,
                 endpointOverrides,
                 config: hooks,
