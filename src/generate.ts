@@ -190,9 +190,6 @@ export async function generateApi(
     factory.createSourceFile(
       [
         generateImportNode("@reduxjs/toolkit", {
-          ["createSlice"]: "createSlice",
-        }),
-        generateImportNode("@reduxjs/toolkit", {
           ["createEntityAdapter"]: "createEntityAdapter",
         }),
         generateImportNode("@reduxjs/toolkit/query/react", {
@@ -201,7 +198,6 @@ export async function generateApi(
         generateImportNode("@reduxjs/toolkit/query/react", {
           ["fetchBaseQuery"]: "fetchBaseQuery",
         }),
-        generateImportNode(apiFile, { [apiImport]: "api" }),
         generateCreateEntityAdapterCall(),
         generateInitializeInitialState(),
         generateCreateApiCall({
