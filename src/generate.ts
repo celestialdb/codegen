@@ -204,15 +204,8 @@ export async function generateApi(
         generateImportNode(apiFile, { [apiImport]: "api" }),
         generateCreateEntityAdapterCall(),
         generateInitializeInitialState(),
-        ...(tag
-          ? [
-              generateTagTypes({
-                addTagTypes: extractAllTagTypes({ operationDefinitions }),
-              }),
-            ]
-          : []),
         generateCreateApiCall({
-          tag,
+          tags: tag ? extractAllTagTypes({ operationDefinitions }) : [],
           endpointDefinitions: factory.createObjectLiteralExpression(
             operationDefinitions.map((operationDefinition) =>
               generateEndpoint({

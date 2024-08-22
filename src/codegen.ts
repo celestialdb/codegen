@@ -1,5 +1,6 @@
 import { factory } from "./utils/factory";
 import ts from "typescript";
+import { forEach } from "lodash";
 
 const defaultEndpointBuilder = factory.createIdentifier("build");
 
@@ -146,11 +147,11 @@ export function generateCreateApiCall2({
 export function generateCreateApiCall({
   endpointBuilder = defaultEndpointBuilder,
   endpointDefinitions,
-  tag,
+  tags,
 }: {
   endpointBuilder?: ts.Identifier;
   endpointDefinitions: ts.ObjectLiteralExpression;
-  tag: boolean;
+  tags: string[];
 }) {
   const baseQueryLiteralExpression = factory.createObjectLiteralExpression(
     generateObjectProperties({
@@ -169,6 +170,10 @@ export function generateCreateApiCall({
       generateObjectProperties({
         reducerPath: factory.createStringLiteral("testReducer", true),
         baseQuery: baseQueryCallExpression,
+        tagTypes: factory.createArrayLiteralExpression(
+          tags.map((tag) => factory.createStringLiteral(tag)),
+          true,
+        ),
         endpoints: factory.createArrowFunction(
           undefined,
           undefined,
