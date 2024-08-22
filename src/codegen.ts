@@ -2,6 +2,7 @@ import { factory } from "./utils/factory";
 import ts from "typescript";
 import { capitalize } from "./utils";
 import { reduxIdentifiers } from "./utils/reduxIdentifiers";
+import { generateReducerPath, generateApiSliceName } from "./utils/naming";
 
 const defaultEndpointBuilder = factory.createIdentifier("build");
 
@@ -47,21 +48,13 @@ export function generateImportNode(
   );
 }
 
-// TODO: create parent function that the below two functions call
-
-export function generateApiSliceName(name: string) {
-  return name + "ApiSlice";
-}
-
-export function generateReducerPath(name: string) {
-  return name;
-}
-
 export function generateCreateApiCall({
+  identifier,
   endpointBuilder = defaultEndpointBuilder,
   endpointDefinitions,
   tags,
 }: {
+  identifier: string;
   endpointBuilder?: ts.Identifier;
   endpointDefinitions: ts.ObjectLiteralExpression;
   tags: string[];
@@ -82,7 +75,7 @@ export function generateCreateApiCall({
     factory.createObjectLiteralExpression(
       generateObjectProperties({
         reducerPath: factory.createStringLiteral(
-          generateReducerPath(name),
+          generateReducerPath(identifier),
           true,
         ),
         baseQuery: baseQueryCallExpression,
@@ -112,11 +105,11 @@ export function generateCreateApiCall({
     );
 
   return factory.createVariableStatement(
-    undefined,
+    [factory.createModifier(ts.SyntaxKind.ExportKeyword)],
     factory.createVariableDeclarationList(
       [
         factory.createVariableDeclaration(
-          factory.createIdentifier(generateApiSliceName(name)),
+          factory.createIdentifier(generateApiSliceName(identifier)),
           undefined,
           undefined,
           factory.createCallExpression(
@@ -186,7 +179,10 @@ export function generateInitializeInitialState() {
   );
 }
 
-export function generateBaseSelectors() {
+export function generateBaseSelectors(
+  identifier: string,
+  endpointToIndex: string,
+) {
   // this function generates the following code from the sample code:
   /*
         const selectEntryResult = (state) =>
@@ -230,13 +226,15 @@ export function generateBaseSelectors() {
                   factory.createPropertyAccessChain(
                     factory.createPropertyAccessChain(
                       factory.createPropertyAccessExpression(
-                        factory.createIdentifier(generateApiSliceName(name)),
+                        factory.createIdentifier(
+                          generateApiSliceName(identifier),
+                        ),
                         factory.createIdentifier(
                           reduxIdentifiers.createApiResultEndpointsProperty,
                         ),
                       ),
                       undefined,
-                      factory.createIdentifier(mainEndpoint),
+                      factory.createIdentifier(endpointToIndex),
                     ),
                     undefined,
                     factory.createIdentifier("select"),
@@ -260,7 +258,7 @@ export function generateBaseSelectors() {
   //             (state) => selectEntryResult(state) ?? initialState
   //         )
   const callPickDataLiteralExpression = factory.createVariableStatement(
-    [factory.createModifier(ts.SyntaxKind.ExportKeyword)],
+    undefined,
     factory.createVariableDeclarationList(
       [
         factory.createVariableDeclaration(
@@ -271,7 +269,7 @@ export function generateBaseSelectors() {
           undefined,
           factory.createCallExpression(
             factory.createPropertyAccessExpression(
-              factory.createIdentifier(reduxIdentifiers.pickDataFromApiSlice),
+              factory.createIdentifier(reduxIdentifiers.entityAdapterVarName),
               factory.createIdentifier(reduxIdentifiers.getSelectors),
             ),
             undefined,
@@ -316,7 +314,7 @@ export function generateBaseSelectors() {
     factory.createVariableDeclarationList(
       [
         factory.createVariableDeclaration(
-          factory.createIdentifier("select" + capitalize(name)),
+          factory.createIdentifier("select" + capitalize(identifier)),
           undefined,
           undefined,
           factory.createPropertyAccessExpression(
@@ -337,7 +335,7 @@ export function generateBaseSelectors() {
     factory.createVariableDeclarationList(
       [
         factory.createVariableDeclaration(
-          factory.createIdentifier("select" + capitalize(name) + "Ids"),
+          factory.createIdentifier("select" + capitalize(identifier) + "Ids"),
           undefined,
           undefined,
           factory.createPropertyAccessExpression(
@@ -358,7 +356,7 @@ export function generateBaseSelectors() {
     factory.createVariableDeclarationList(
       [
         factory.createVariableDeclaration(
-          factory.createIdentifier("select" + capitalize(name) + "ById"),
+          factory.createIdentifier("select" + capitalize(identifier) + "ById"),
           undefined,
           undefined,
           factory.createPropertyAccessExpression(

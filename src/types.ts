@@ -1,4 +1,4 @@
-import type { OpenAPIV3 } from 'openapi-types';
+import type { OpenAPIV3 } from "openapi-types";
 
 export type OperationDefinition = {
   path: string;
@@ -7,37 +7,45 @@ export type OperationDefinition = {
   operation: OpenAPIV3.OperationObject;
 };
 
-type Require<T, K extends keyof T> = { [k in K]-?: NonNullable<T[k]> } & Omit<T, K>;
-type Optional<T, K extends keyof T> = { [k in K]?: NonNullable<T[k]> } & Omit<T, K>;
+type Require<T, K extends keyof T> = { [k in K]-?: NonNullable<T[k]> } & Omit<
+  T,
+  K
+>;
+type Optional<T, K extends keyof T> = { [k in K]?: NonNullable<T[k]> } & Omit<
+  T,
+  K
+>;
 type Id<T> = { [K in keyof T]: T[K] } & {};
 
-export const operationKeys = ['get', 'put', 'post', 'delete', 'options', 'head', 'patch', 'trace'] as const;
+export const operationKeys = [
+  "get",
+  "put",
+  "post",
+  "delete",
+  "options",
+  "head",
+  "patch",
+  "trace",
+] as const;
 
 export type GenerationOptions = Id<
   CommonOptions &
-    Optional<OutputFileOptions, 'outputFile'> & {
+    Optional<OutputFileOptions, "outputFile"> & {
       isDataResponse?(
         code: string,
         response: OpenAPIV3.ResponseObject,
-        allResponses: OpenAPIV3.ResponsesObject
+        allResponses: OpenAPIV3.ResponsesObject,
       ): boolean;
     }
 >;
 
 export interface CommonOptions {
-  apiFile: string;
+  key: string;
+  endpointToIndex: string;
   /**
    * filename or url
    */
   schemaFile: string;
-  /**
-   * defaults to "api"
-   */
-  apiImport?: string;
-  /**
-   * defaults to "enhancedApi"
-   */
-  exportName?: string;
   /**
    * defaults to "ApiArg"
    */
@@ -50,7 +58,9 @@ export interface CommonOptions {
    * defaults to `false`
    * `true` will generate hooks for queries and mutations, but no lazyQueries
    */
-  hooks?: boolean | { queries: boolean; lazyQueries: boolean; mutations: boolean };
+  hooks?:
+    | boolean
+    | { queries: boolean; lazyQueries: boolean; mutations: boolean };
   /**
    * defaults to false
    * `true` will generate a union type for `undefined` properties like: `{ id?: string | undefined }` instead of `{ id?: string }`
@@ -76,7 +86,10 @@ export interface CommonOptions {
 
 export type TextMatcher = string | RegExp | (string | RegExp)[];
 
-export type EndpointMatcherFunction = (operationName: string, operationDefinition: OperationDefinition) => boolean;
+export type EndpointMatcherFunction = (
+  operationName: string,
+  operationDefinition: OperationDefinition,
+) => boolean;
 
 export type EndpointMatcher = TextMatcher | EndpointMatcherFunction;
 
@@ -93,13 +106,15 @@ export interface OutputFileOptions extends Partial<CommonOptions> {
 
 export interface EndpointOverrides {
   pattern: EndpointMatcher;
-  type: 'mutation' | 'query';
+  type: "mutation" | "query";
 }
 
 export type ConfigFile =
-  | Id<Require<CommonOptions & OutputFileOptions, 'outputFile'>>
+  | Id<Require<CommonOptions & OutputFileOptions, "outputFile">>
   | Id<
-      Omit<CommonOptions, 'outputFile'> & {
-        outputFiles: { [outputFile: string]: Omit<OutputFileOptions, 'outputFile'> };
+      Omit<CommonOptions, "outputFile"> & {
+        outputFiles: {
+          [outputFile: string]: Omit<OutputFileOptions, "outputFile">;
+        };
       }
     >;
