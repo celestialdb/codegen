@@ -13,6 +13,7 @@ import ApiGenerator, {
 import type { OpenAPIV3 } from "openapi-types";
 import ts from "typescript";
 import {
+  generateBaseSelectors,
   generateCreateEntityAdapterCall,
   generateInitializeInitialState,
   ObjectPropertyDefinitions,
@@ -21,7 +22,6 @@ import {
   generateCreateApiCall,
   generateEndpointDefinition,
   generateImportNode,
-  generateTagTypes,
 } from "./codegen";
 import { generateReactHooks } from "./generators/react-hooks";
 import type {
@@ -39,7 +39,6 @@ import {
   isQuery as testIsQuery,
 } from "./utils";
 import { factory } from "./utils/factory";
-import { createSelector } from "@reduxjs/toolkit";
 
 const generatedApiName = "injectedRtkApi";
 
@@ -200,6 +199,7 @@ export async function generateApi(
         }),
         generateCreateEntityAdapterCall(),
         generateInitializeInitialState(),
+        ...generateBaseSelectors(),
         generateCreateApiCall({
           tags: tag ? extractAllTagTypes({ operationDefinitions }) : [],
           endpointDefinitions: factory.createObjectLiteralExpression(

@@ -144,6 +144,10 @@ export function generateCreateApiCall2({
   );
 }
 
+export function generateApiSliceName(name: string) {
+  return name;
+}
+
 export function generateCreateApiCall({
   endpointBuilder = defaultEndpointBuilder,
   endpointDefinitions,
@@ -216,6 +220,11 @@ export function generateCreateApiCall({
 }
 
 export function generateCreateEntityAdapterCall() {
+  // this function generates the following code from the sample code:
+  /*
+        const entityAdapter = createEntityAdapter()
+     */
+
   return factory.createVariableStatement(
     undefined,
     factory.createVariableDeclarationList(
@@ -237,6 +246,11 @@ export function generateCreateEntityAdapterCall() {
 }
 
 export function generateInitializeInitialState() {
+  // this function generates the following code from the sample code:
+  /*
+        const initialState = entityAdapter.getInitialState()
+     */
+
   return factory.createVariableStatement(
     undefined,
     factory.createVariableDeclarationList(
@@ -258,6 +272,191 @@ export function generateInitializeInitialState() {
       ts.NodeFlags.Const,
     ),
   );
+}
+
+export function generateBaseSelectors() {
+  // this function generates the following code from the sample code:
+  /*
+        export const selectEntryResult = (state) =>
+            tasksApiSlice.endpoints.getTasks.select()(state).data
+
+        const entrySelectors = entryAdapter.getSelectors(
+            (state) => selectEntryResult(state) ?? initialState
+        )
+        export const selectTodos = entrySelectors.selectAll
+        export const selectTodoIds = entrySelectors.selectIds
+        export const selectTodoById = entrySelectors.selectById
+     */
+
+  // generates: export const selectEntryResult = (state) =>
+  //             tasksApiSlice.endpoints.getTasks.select()(state).data
+  const pickDataLiteralExpression = factory.createVariableStatement(
+    [factory.createModifier(ts.SyntaxKind.ExportKeyword)],
+    factory.createVariableDeclarationList(
+      [
+        factory.createVariableDeclaration(
+          factory.createIdentifier("testingTesting"),
+          undefined,
+          undefined,
+          factory.createArrowFunction(
+            undefined,
+            undefined,
+            [
+              factory.createParameterDeclaration(
+                undefined,
+                undefined,
+                factory.createIdentifier("state"),
+                undefined,
+                undefined,
+              ),
+            ],
+            undefined,
+            undefined,
+            factory.createPropertyAccessExpression(
+              factory.createCallExpression(
+                factory.createCallExpression(
+                  factory.createPropertyAccessChain(
+                    factory.createPropertyAccessChain(
+                      factory.createPropertyAccessExpression(
+                        factory.createIdentifier("injectedRtkApi"),
+                        factory.createIdentifier("endpoints"),
+                      ),
+                      undefined,
+                      factory.createIdentifier("getTasks"),
+                    ),
+                    undefined,
+                    factory.createIdentifier("select"),
+                  ),
+                  undefined,
+                  [],
+                ),
+                undefined,
+                [factory.createIdentifier("state")],
+              ),
+              factory.createIdentifier("data"),
+            ),
+          ),
+        ),
+      ],
+      ts.NodeFlags.Const,
+    ),
+  );
+
+  // generates: const entrySelectors = entryAdapter.getSelectors(
+  //             (state) => selectEntryResult(state) ?? initialState
+  //         )
+  const callPickDataLiteralExpression = factory.createVariableStatement(
+    [factory.createModifier(ts.SyntaxKind.ExportKeyword)],
+    factory.createVariableDeclarationList(
+      [
+        factory.createVariableDeclaration(
+          factory.createIdentifier("testingTestingSelectors"),
+          undefined,
+          undefined,
+          factory.createCallExpression(
+            factory.createPropertyAccessExpression(
+              factory.createIdentifier("testingTesting"),
+              factory.createIdentifier("getSelectors"),
+            ),
+            undefined,
+            [
+              factory.createArrowFunction(
+                undefined,
+                undefined,
+                [
+                  factory.createParameterDeclaration(
+                    undefined,
+                    undefined,
+                    factory.createIdentifier("state"),
+                    undefined,
+                    undefined,
+                  ),
+                ],
+                undefined,
+                undefined,
+                factory.createBinaryExpression(
+                  factory.createCallExpression(
+                    factory.createIdentifier("testingTesting"),
+                    undefined,
+                    [factory.createIdentifier("state")],
+                  ),
+                  factory.createToken(ts.SyntaxKind.QuestionQuestionToken),
+                  factory.createIdentifier("initialState"),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+      ts.NodeFlags.Const,
+    ),
+  );
+
+  // generates: export const selectTodos = entrySelectors.selectAll
+  //         export const selectTodoIds = entrySelectors.selectIds
+  //         export const selectTodoById = entrySelectors.selectById
+
+  const selectAllSelectorLiteral = factory.createVariableStatement(
+    [factory.createModifier(ts.SyntaxKind.ExportKeyword)],
+    factory.createVariableDeclarationList(
+      [
+        factory.createVariableDeclaration(
+          factory.createIdentifier("selectTodos"),
+          undefined,
+          undefined,
+          factory.createPropertyAccessExpression(
+            factory.createIdentifier("testingTestingSelectors"),
+            factory.createIdentifier("selectAll"),
+          ),
+        ),
+      ],
+      ts.NodeFlags.Const,
+    ),
+  );
+
+  const selectIdsSelectorLiteral = factory.createVariableStatement(
+    [factory.createModifier(ts.SyntaxKind.ExportKeyword)],
+    factory.createVariableDeclarationList(
+      [
+        factory.createVariableDeclaration(
+          factory.createIdentifier("selectTodoIds"),
+          undefined,
+          undefined,
+          factory.createPropertyAccessExpression(
+            factory.createIdentifier("testingTestingSelectors"),
+            factory.createIdentifier("selectIds"),
+          ),
+        ),
+      ],
+      ts.NodeFlags.Const,
+    ),
+  );
+
+  const selectByIdSelectorLiteral = factory.createVariableStatement(
+    [factory.createModifier(ts.SyntaxKind.ExportKeyword)],
+    factory.createVariableDeclarationList(
+      [
+        factory.createVariableDeclaration(
+          factory.createIdentifier("selectTodoById"),
+          undefined,
+          undefined,
+          factory.createPropertyAccessExpression(
+            factory.createIdentifier("testingTestingSelectors"),
+            factory.createIdentifier("selectById"),
+          ),
+        ),
+      ],
+      ts.NodeFlags.Const,
+    ),
+  );
+
+  return [
+    pickDataLiteralExpression,
+    callPickDataLiteralExpression,
+    selectAllSelectorLiteral,
+    selectIdsSelectorLiteral,
+    selectByIdSelectorLiteral,
+  ];
 }
 
 export function generateEndpointDefinition({
