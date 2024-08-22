@@ -1,6 +1,7 @@
 import { factory } from "./utils/factory";
 import ts from "typescript";
-import { forEach } from "lodash";
+import { capitalize } from "./utils";
+import { reduxIdentifiers } from "./utils/reduxIdentifiers";
 
 const defaultEndpointBuilder = factory.createIdentifier("build");
 
@@ -46,105 +47,13 @@ export function generateImportNode(
   );
 }
 
-export function generateCreateApiCall2({
-  endpointBuilder = defaultEndpointBuilder,
-  endpointDefinitions,
-  tag,
-}: {
-  endpointBuilder?: ts.Identifier;
-  endpointDefinitions: ts.ObjectLiteralExpression;
-  tag: boolean;
-}) {
-  const injectEndpointsObjectLiteralExpression =
-    factory.createObjectLiteralExpression(
-      generateObjectProperties({
-        endpoints: factory.createArrowFunction(
-          undefined,
-          undefined,
-          [
-            factory.createParameterDeclaration(
-              undefined,
-              undefined,
-              endpointBuilder,
-              undefined,
-              undefined,
-              undefined,
-            ),
-          ],
-          undefined,
-          factory.createToken(ts.SyntaxKind.EqualsGreaterThanToken),
-          factory.createParenthesizedExpression(endpointDefinitions),
-        ),
-        overrideExisting: factory.createFalse(),
-      }),
-      true,
-    );
-  if (tag) {
-    const enhanceEndpointsObjectLiteralExpression =
-      factory.createObjectLiteralExpression(
-        [
-          factory.createShorthandPropertyAssignment(
-            factory.createIdentifier("addTagTypes"),
-            undefined,
-          ),
-        ],
-        true,
-      );
-
-    return factory.createVariableStatement(
-      undefined,
-      factory.createVariableDeclarationList(
-        [
-          factory.createVariableDeclaration(
-            factory.createIdentifier("injectedRtkApi"),
-            undefined,
-            undefined,
-            factory.createCallExpression(
-              factory.createPropertyAccessExpression(
-                factory.createCallExpression(
-                  factory.createPropertyAccessExpression(
-                    factory.createIdentifier("api"),
-                    factory.createIdentifier("enhanceEndpoints"),
-                  ),
-                  undefined,
-                  [enhanceEndpointsObjectLiteralExpression],
-                ),
-                factory.createIdentifier("injectEndpoints"),
-              ),
-              undefined,
-              [injectEndpointsObjectLiteralExpression],
-            ),
-          ),
-        ],
-        ts.NodeFlags.Const,
-      ),
-    );
-  }
-
-  return factory.createVariableStatement(
-    undefined,
-    factory.createVariableDeclarationList(
-      [
-        factory.createVariableDeclaration(
-          factory.createIdentifier("injectedRtkApi"),
-          undefined,
-          undefined,
-          factory.createCallExpression(
-            factory.createPropertyAccessExpression(
-              factory.createIdentifier("api"),
-              factory.createIdentifier("injectEndpoints"),
-            ),
-            undefined,
-            [injectEndpointsObjectLiteralExpression],
-          ),
-        ),
-      ],
-      ts.NodeFlags.Const,
-    ),
-  );
-}
+// TODO: create parent function that the below two functions call
 
 export function generateApiSliceName(name: string) {
+  return name + "ApiSlice";
+}
+
+export function generateReducerPath(name: string) {
   return name;
 }
 
@@ -164,7 +73,7 @@ export function generateCreateApiCall({
   );
 
   const baseQueryCallExpression = factory.createCallExpression(
-    factory.createIdentifier("fetchBaseQuery"),
+    factory.createIdentifier(reduxIdentifiers.fetchBaseQuery),
     undefined,
     [baseQueryLiteralExpression],
   );
@@ -172,7 +81,10 @@ export function generateCreateApiCall({
   const endpointsObjectLiteralExpression =
     factory.createObjectLiteralExpression(
       generateObjectProperties({
-        reducerPath: factory.createStringLiteral("testReducer", true),
+        reducerPath: factory.createStringLiteral(
+          generateReducerPath(name),
+          true,
+        ),
         baseQuery: baseQueryCallExpression,
         tagTypes: factory.createArrayLiteralExpression(
           tags.map((tag) => factory.createStringLiteral(tag)),
@@ -204,11 +116,11 @@ export function generateCreateApiCall({
     factory.createVariableDeclarationList(
       [
         factory.createVariableDeclaration(
-          factory.createIdentifier("injectedRtkApi"),
+          factory.createIdentifier(generateApiSliceName(name)),
           undefined,
           undefined,
           factory.createCallExpression(
-            factory.createIdentifier("createApi"),
+            factory.createIdentifier(reduxIdentifiers.createApi),
             undefined,
             [endpointsObjectLiteralExpression],
           ),
@@ -230,11 +142,11 @@ export function generateCreateEntityAdapterCall() {
     factory.createVariableDeclarationList(
       [
         factory.createVariableDeclaration(
-          factory.createIdentifier("entityAdapter"),
+          factory.createIdentifier(reduxIdentifiers.entityAdapterVarName),
           undefined,
           undefined,
           factory.createCallExpression(
-            factory.createIdentifier("createEntityAdapter"),
+            factory.createIdentifier(reduxIdentifiers.createEntityAdapter),
             undefined,
             [],
           ),
@@ -256,13 +168,13 @@ export function generateInitializeInitialState() {
     factory.createVariableDeclarationList(
       [
         factory.createVariableDeclaration(
-          factory.createIdentifier("initialState"),
+          factory.createIdentifier(reduxIdentifiers.initalStateVarName),
           undefined,
           undefined,
           factory.createCallExpression(
             factory.createPropertyAccessExpression(
-              factory.createIdentifier("entityAdapter"),
-              factory.createIdentifier("getInitialState"),
+              factory.createIdentifier(reduxIdentifiers.entityAdapterVarName),
+              factory.createIdentifier(reduxIdentifiers.getInitialState),
             ),
             undefined,
             [],
@@ -277,7 +189,7 @@ export function generateInitializeInitialState() {
 export function generateBaseSelectors() {
   // this function generates the following code from the sample code:
   /*
-        export const selectEntryResult = (state) =>
+        const selectEntryResult = (state) =>
             tasksApiSlice.endpoints.getTasks.select()(state).data
 
         const entrySelectors = entryAdapter.getSelectors(
@@ -288,14 +200,14 @@ export function generateBaseSelectors() {
         export const selectTodoById = entrySelectors.selectById
      */
 
-  // generates: export const selectEntryResult = (state) =>
+  // generates: const selectEntryResult = (state) =>
   //             tasksApiSlice.endpoints.getTasks.select()(state).data
   const pickDataLiteralExpression = factory.createVariableStatement(
-    [factory.createModifier(ts.SyntaxKind.ExportKeyword)],
+    undefined,
     factory.createVariableDeclarationList(
       [
         factory.createVariableDeclaration(
-          factory.createIdentifier("testingTesting"),
+          factory.createIdentifier(reduxIdentifiers.pickDataFromApiSlice),
           undefined,
           undefined,
           factory.createArrowFunction(
@@ -305,7 +217,7 @@ export function generateBaseSelectors() {
               factory.createParameterDeclaration(
                 undefined,
                 undefined,
-                factory.createIdentifier("state"),
+                factory.createIdentifier(reduxIdentifiers.state),
                 undefined,
                 undefined,
               ),
@@ -318,11 +230,13 @@ export function generateBaseSelectors() {
                   factory.createPropertyAccessChain(
                     factory.createPropertyAccessChain(
                       factory.createPropertyAccessExpression(
-                        factory.createIdentifier("injectedRtkApi"),
-                        factory.createIdentifier("endpoints"),
+                        factory.createIdentifier(generateApiSliceName(name)),
+                        factory.createIdentifier(
+                          reduxIdentifiers.createApiResultEndpointsProperty,
+                        ),
                       ),
                       undefined,
-                      factory.createIdentifier("getTasks"),
+                      factory.createIdentifier(mainEndpoint),
                     ),
                     undefined,
                     factory.createIdentifier("select"),
@@ -331,7 +245,7 @@ export function generateBaseSelectors() {
                   [],
                 ),
                 undefined,
-                [factory.createIdentifier("state")],
+                [factory.createIdentifier(reduxIdentifiers.state)],
               ),
               factory.createIdentifier("data"),
             ),
@@ -350,13 +264,15 @@ export function generateBaseSelectors() {
     factory.createVariableDeclarationList(
       [
         factory.createVariableDeclaration(
-          factory.createIdentifier("testingTestingSelectors"),
+          factory.createIdentifier(
+            reduxIdentifiers.entrySelectorsForApiSliceData,
+          ),
           undefined,
           undefined,
           factory.createCallExpression(
             factory.createPropertyAccessExpression(
-              factory.createIdentifier("testingTesting"),
-              factory.createIdentifier("getSelectors"),
+              factory.createIdentifier(reduxIdentifiers.pickDataFromApiSlice),
+              factory.createIdentifier(reduxIdentifiers.getSelectors),
             ),
             undefined,
             [
@@ -367,7 +283,7 @@ export function generateBaseSelectors() {
                   factory.createParameterDeclaration(
                     undefined,
                     undefined,
-                    factory.createIdentifier("state"),
+                    factory.createIdentifier(reduxIdentifiers.state),
                     undefined,
                     undefined,
                   ),
@@ -376,12 +292,14 @@ export function generateBaseSelectors() {
                 undefined,
                 factory.createBinaryExpression(
                   factory.createCallExpression(
-                    factory.createIdentifier("testingTesting"),
+                    factory.createIdentifier(
+                      reduxIdentifiers.pickDataFromApiSlice,
+                    ),
                     undefined,
-                    [factory.createIdentifier("state")],
+                    [factory.createIdentifier(reduxIdentifiers.state)],
                   ),
                   factory.createToken(ts.SyntaxKind.QuestionQuestionToken),
-                  factory.createIdentifier("initialState"),
+                  factory.createIdentifier(reduxIdentifiers.initalStateVarName),
                 ),
               ),
             ],
@@ -393,19 +311,18 @@ export function generateBaseSelectors() {
   );
 
   // generates: export const selectTodos = entrySelectors.selectAll
-  //         export const selectTodoIds = entrySelectors.selectIds
-  //         export const selectTodoById = entrySelectors.selectById
-
   const selectAllSelectorLiteral = factory.createVariableStatement(
     [factory.createModifier(ts.SyntaxKind.ExportKeyword)],
     factory.createVariableDeclarationList(
       [
         factory.createVariableDeclaration(
-          factory.createIdentifier("selectTodos"),
+          factory.createIdentifier("select" + capitalize(name)),
           undefined,
           undefined,
           factory.createPropertyAccessExpression(
-            factory.createIdentifier("testingTestingSelectors"),
+            factory.createIdentifier(
+              reduxIdentifiers.entrySelectorsForApiSliceData,
+            ),
             factory.createIdentifier("selectAll"),
           ),
         ),
@@ -414,16 +331,19 @@ export function generateBaseSelectors() {
     ),
   );
 
+  // generates: export const selectTodoIds = entrySelectors.selectIds
   const selectIdsSelectorLiteral = factory.createVariableStatement(
     [factory.createModifier(ts.SyntaxKind.ExportKeyword)],
     factory.createVariableDeclarationList(
       [
         factory.createVariableDeclaration(
-          factory.createIdentifier("selectTodoIds"),
+          factory.createIdentifier("select" + capitalize(name) + "Ids"),
           undefined,
           undefined,
           factory.createPropertyAccessExpression(
-            factory.createIdentifier("testingTestingSelectors"),
+            factory.createIdentifier(
+              reduxIdentifiers.entrySelectorsForApiSliceData,
+            ),
             factory.createIdentifier("selectIds"),
           ),
         ),
@@ -432,16 +352,19 @@ export function generateBaseSelectors() {
     ),
   );
 
+  // generates: export const selectTodoById = entrySelectors.selectById
   const selectByIdSelectorLiteral = factory.createVariableStatement(
     [factory.createModifier(ts.SyntaxKind.ExportKeyword)],
     factory.createVariableDeclarationList(
       [
         factory.createVariableDeclaration(
-          factory.createIdentifier("selectTodoById"),
+          factory.createIdentifier("select" + capitalize(name) + "ById"),
           undefined,
           undefined,
           factory.createPropertyAccessExpression(
-            factory.createIdentifier("testingTestingSelectors"),
+            factory.createIdentifier(
+              reduxIdentifiers.entrySelectorsForApiSliceData,
+            ),
             factory.createIdentifier("selectById"),
           ),
         ),
