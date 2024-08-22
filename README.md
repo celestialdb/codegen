@@ -1,6 +1,6 @@
-<p align="center">
-  <img src="https://raw.githubusercontent.com/rtk-incubator/rtk-query/main/logo.png" width="400" />
-</p>
+<h1 align="center">
+  celestial
+</h1>
 <h2 align="center">
 Code Generator
 </h2>
