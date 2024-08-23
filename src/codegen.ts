@@ -153,7 +153,7 @@ export function generateCreateEntityAdapterCall() {
 export function generateInitializeInitialState() {
   // this function generates the following code from the sample code:
   /*
-        const initialState = entityAdapter.getInitialState()
+        const initialState : EntityState<any> = entityAdapter.getInitialState()
      */
 
   return factory.createVariableStatement(
@@ -163,7 +163,10 @@ export function generateInitializeInitialState() {
         factory.createVariableDeclaration(
           factory.createIdentifier(reduxIdentifiers.initalStateVarName),
           undefined,
-          undefined,
+          factory.createTypeReferenceNode(
+            factory.createIdentifier("EntityState"),
+            [factory.createKeywordTypeNode(ts.SyntaxKind.AnyKeyword)],
+          ),
           factory.createCallExpression(
             factory.createPropertyAccessExpression(
               factory.createIdentifier(reduxIdentifiers.entityAdapterVarName),
@@ -382,6 +385,7 @@ export function generateBaseSelectors(
 
 export function generateEndpointDefinition({
   operationName,
+  isEndpointToIndex,
   type,
   Response,
   QueryArg,
@@ -391,6 +395,7 @@ export function generateEndpointDefinition({
   tags,
 }: {
   operationName: string;
+  isEndpointToIndex: boolean;
   type: "query" | "mutation";
   Response: ts.TypeReferenceNode;
   QueryArg: ts.TypeReferenceNode;
@@ -415,6 +420,58 @@ export function generateEndpointDefinition({
       ),
     );
   }
+
+  // if the ednpoint is the endpointToIndex, then generates:
+  /*
+        transformResponse: (responseData:Task[]) => {
+                return entryAdapter.setAll(initialState, responseData)
+            },
+     */
+
+  function adhocTypeGen() {
+    // operation name is like so "getTasks"
+    // returns "Task[]"
+    return operationName.replace("get", "").slice(0, -1) + "[]";
+  }
+
+  if (isEndpointToIndex) {
+    objectProperties.push(
+      factory.createPropertyAssignment(
+        factory.createIdentifier("transformResponse"),
+        factory.createArrowFunction(
+          undefined,
+          undefined,
+          [
+            factory.createParameterDeclaration(
+              undefined,
+              undefined,
+              factory.createIdentifier("responseData"),
+              undefined,
+              factory.createTypeReferenceNode(
+                factory.createIdentifier(adhocTypeGen()),
+                undefined,
+              ),
+              undefined,
+            ),
+          ],
+          undefined,
+          undefined,
+          factory.createCallExpression(
+            factory.createPropertyAccessExpression(
+              factory.createIdentifier(reduxIdentifiers.entityAdapterVarName),
+              factory.createIdentifier("setAll"),
+            ),
+            undefined,
+            [
+              factory.createIdentifier(reduxIdentifiers.initalStateVarName),
+              factory.createIdentifier("responseData"),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   return factory.createPropertyAssignment(
     factory.createIdentifier(operationName),
 
@@ -423,7 +480,15 @@ export function generateEndpointDefinition({
         endpointBuilder,
         factory.createIdentifier(type),
       ),
-      [Response, QueryArg],
+      [
+        isEndpointToIndex
+          ? factory.createTypeReferenceNode(
+              factory.createIdentifier("EntityState"),
+              [factory.createKeywordTypeNode(ts.SyntaxKind.AnyKeyword)],
+            )
+          : Response,
+        QueryArg,
+      ],
       [factory.createObjectLiteralExpression(objectProperties, true)],
     ),
   );

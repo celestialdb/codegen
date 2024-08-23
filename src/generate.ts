@@ -187,6 +187,8 @@ export async function generateApi(
       [
         generateImportNode("@reduxjs/toolkit", {
           ["createEntityAdapter"]: "createEntityAdapter",
+          ["Dictionary"]: "Dictionary",
+          ["EntityState"]: "EntityState",
         }),
         generateImportNode("@reduxjs/toolkit/query/react", {
           ["createApi"]: "createApi",
@@ -432,6 +434,7 @@ export async function generateApi(
 
     return generateEndpointDefinition({
       operationName,
+      isEndpointToIndex: operationName === endpointToIndex,
       type: isQuery ? "query" : "mutation",
       Response: ResponseTypeName,
       QueryArg,
