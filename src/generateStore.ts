@@ -4,7 +4,7 @@ import { generateImportNode, generateObjectProperties } from "./codegen";
 import { generateApiSliceName, generateReducerPath } from "./utils/naming";
 
 function generateDataSliceImport(dataSlice: string) {
-  return generateImportNode(`./${generateApiSliceName(dataSlice)}.ts`, {
+  return generateImportNode(`./${generateApiSliceName(dataSlice)}`, {
     [generateApiSliceName(dataSlice)]: generateApiSliceName(dataSlice),
   });
 }
@@ -112,26 +112,29 @@ function generateConfigureStore(dataSlices: string[]): ts.Statement[] {
 
   const configureStoreExpression = factory.createVariableStatement(
     undefined,
-    factory.createVariableDeclarationList([
-      factory.createVariableDeclaration(
-        factory.createIdentifier("store"),
-        undefined,
-        undefined,
-        factory.createCallExpression(
-          factory.createIdentifier("configureStore"),
+    factory.createVariableDeclarationList(
+      [
+        factory.createVariableDeclaration(
+          factory.createIdentifier("store"),
           undefined,
-          [
-            factory.createObjectLiteralExpression(
-              generateObjectProperties({
-                reducer: generateStoreReducerExpression(dataSlices),
-                middleware: generateStoreMiddlewareExpression(dataSlices),
-              }),
-              true,
-            ),
-          ],
+          undefined,
+          factory.createCallExpression(
+            factory.createIdentifier("configureStore"),
+            undefined,
+            [
+              factory.createObjectLiteralExpression(
+                generateObjectProperties({
+                  reducer: generateStoreReducerExpression(dataSlices),
+                  middleware: generateStoreMiddlewareExpression(dataSlices),
+                }),
+                true,
+              ),
+            ],
+          ),
         ),
-      ),
-    ]),
+      ],
+      ts.NodeFlags.Const,
+    ),
   );
 
   // generates:
@@ -189,10 +192,8 @@ export async function generateStore(dataSlices: string[]) {
         // generates: import {tasksApiSlice} from "./dataApi/tasksApiSlice";
         // for all dataSlices created from user provided configuration
         ...dataSlices.map(generateDataSliceImport),
-        // generates: import {} from import filtersReducer from './dataApi/filtersSlice'
-        generateImportNode("./cache.ts", {
-          ["cacheReducer"]: "cacheReducer",
-        }),
+        // generates: import filtersReducer from import filtersReducer from './dataApi/filtersSlice'
+        generateImportNode("./cache", {}, "cacheReducer"),
         ...generateConfigureStore(dataSlices),
       ],
       factory.createToken(ts.SyntaxKind.EndOfFileToken),
