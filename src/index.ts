@@ -36,10 +36,6 @@ export async function generateEndpoints(
   );
 }
 
-// function getAllTables() {
-//
-// }
-
 export async function generateStoreConfig(config: ConfigFile) {
   const { generateStore } = await import("./generateStore");
   const sourceCode = await generateStore(["tasks", "colors", "status"]);
@@ -51,9 +47,16 @@ export async function generateStoreConfig(config: ConfigFile) {
   );
 }
 
-// export async function generateSlice() {
-//
-// }
+export async function generateBasicRTKSlice() {
+  const { generateBasicRTKSlice } = await import("./generateBasicRTKSlice");
+  const sourceCode = await generateBasicRTKSlice();
+
+  const outputFile = "/Users/kriti/celestial/ex/code-gen-test/cache.ts";
+  fs.writeFileSync(
+    path.resolve(process.cwd(), outputFile),
+    await prettify(outputFile, sourceCode),
+  );
+}
 
 export function parseConfig(fullConfig: ConfigFile) {
   const outFiles: (CommonOptions & OutputFileOptions)[] = [];
