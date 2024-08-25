@@ -114,7 +114,6 @@ export async function generateApi(
   spec: string,
   {
     key,
-    endpointToIndex,
     argSuffix = "ApiArg",
     responseSuffix = "ApiResponse",
     hooks = false,
@@ -145,6 +144,32 @@ export async function generateApi(
     operationMatches(filterEndpoints),
   );
 
+  // code gen for endpoints of a particular grouping
+  const subsetOperationDefinitions = operationDefinitions.filter(
+    (operationDefinition) => {
+      const temp = operationDefinition.operation;
+      console.log("---- x-celestial-grouping: ", temp);
+      // @ts-ignore
+      return temp["x-celestial-grouping"] === key;
+    },
+  );
+
+  // user provides a custom configuration in open api config
+  // called `x-endpoint-to-index` for the endpoint to index
+  const endpointToIndexOp: OperationDefinition | undefined =
+    subsetOperationDefinitions.find((operationDefinition) => {
+      const temp = operationDefinition.operation;
+      // @ts-ignore
+      return !!temp["x-celestial-index-endpoint"];
+    });
+
+  if (!endpointToIndexOp) {
+    throw new Error(`No endpoint to index found for ${key}`);
+  }
+
+  const endpointToIndex =
+    endpointToIndexOp.verb + capitalize(endpointToIndexOp.path.slice(1));
+
   const resultFile = ts.createSourceFile(
     "someFileName.ts",
     "",
@@ -169,18 +194,6 @@ export async function generateApi(
     return declaration;
   }
 
-  // if (outputFile) {
-  //   outputFile = path.resolve(process.cwd(), outputFile);
-  //   if (apiFile.startsWith(".")) {
-  //     apiFile = path.relative(path.dirname(outputFile), apiFile);
-  //     apiFile = apiFile.replace(/\\/g, "/");
-  //     if (!apiFile.startsWith(".")) apiFile = `./${apiFile}`;
-  //   }
-  // }
-  // apiFile = apiFile.replace(/\.[jt]sx?$/, "");
-
-  // import { createSelector, createEntityAdapter, createSlice, isAnyOf } from '@reduxjs/toolkit'
-  // import { createApi, fetchBaseQuery } from '@reduxjs/toolkit/query/react'
   return printer.printNode(
     ts.EmitHint.Unspecified,
     factory.createSourceFile(
@@ -200,9 +213,13 @@ export async function generateApi(
         generateInitializeInitialState(),
         generateCreateApiCall({
           identifier: key,
-          tags: tag ? extractAllTagTypes({ operationDefinitions }) : [],
+          tags: tag
+            ? extractAllTagTypes({
+                operationDefinitions: subsetOperationDefinitions,
+              })
+            : [],
           endpointDefinitions: factory.createObjectLiteralExpression(
-            operationDefinitions.map((operationDefinition) =>
+            subsetOperationDefinitions.map((operationDefinition) =>
               generateEndpoint({
                 operationDefinition,
                 overrides: getOverrides(operationDefinition, endpointOverrides),
@@ -219,7 +236,7 @@ export async function generateApi(
           ? [
               generateReactHooks({
                 exportName: generateApiSliceName(key),
-                operationDefinitions,
+                operationDefinitions: subsetOperationDefinitions,
                 endpointOverrides,
                 config: hooks,
               }),
@@ -233,13 +250,13 @@ export async function generateApi(
   );
 
   function extractAllTagTypes({
-    operationDefinitions,
+    operationDefinitions: subsetOperationDefinitions,
   }: {
     operationDefinitions: OperationDefinition[];
   }) {
     const allTagTypes = new Set<string>();
 
-    for (const operationDefinition of operationDefinitions) {
+    for (const operationDefinition of subsetOperationDefinitions) {
       const { verb, pathItem } = operationDefinition;
       for (const tag of getTags({ verb, pathItem })) {
         allTagTypes.add(tag);

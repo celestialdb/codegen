@@ -41,7 +41,6 @@ export type GenerationOptions = Id<
 
 export interface CommonOptions {
   key: string;
-  endpointToIndex: string;
   /**
    * filename or url
    */
