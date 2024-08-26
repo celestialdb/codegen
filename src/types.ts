@@ -42,6 +42,10 @@ export type GenerationOptions = Id<
 export interface CommonOptions {
   key: string;
   /**
+   * folder in which to generate RTK defs
+   */
+  outputFolder: string;
+  /**
    * filename or url
    */
   schemaFile: string;

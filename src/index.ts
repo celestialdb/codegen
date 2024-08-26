@@ -9,13 +9,12 @@ import type {
 import { isValidUrl, prettify } from "./utils";
 export type { ConfigFile } from "./types";
 
-// TODO: here store configuration and in memory cache generation will happen
-
 export async function generateEndpoints(
   options: GenerationOptions,
 ): Promise<string | void> {
   const identifier = options.key;
   const schemaLocation = options.schemaFile;
+  const outputFolder = options.outputFolder;
 
   const schemaAbsPath = isValidUrl(options.schemaFile)
     ? options.schemaFile
@@ -27,7 +26,8 @@ export async function generateEndpoints(
   });
 
   const outputFile = path.join(
-    "/Users/kriti/celestial/ex/code-gen-test",
+    // "/Users/kriti/celestial/ex/code-gen-test",
+    outputFolder,
     `${identifier}Data.ts`,
   );
   fs.writeFileSync(
@@ -36,22 +36,28 @@ export async function generateEndpoints(
   );
 }
 
-export async function generateStoreConfig(config: ConfigFile) {
+export async function generateStoreConfig(options: GenerationOptions) {
   const { generateStore } = await import("./generateStore");
   const sourceCode = await generateStore(["tasks", "colors", "status"]);
 
-  const outputFile = "/Users/kriti/celestial/ex/code-gen-test/store.ts";
+  const outputFolder = options.outputFolder;
+  const outputFile = path.join(outputFolder, "store.ts");
+
+  // const outputFile = "/Users/kriti/celestial/ex/code-gen-test/store.ts";
   fs.writeFileSync(
     path.resolve(process.cwd(), outputFile),
     await prettify(outputFile, sourceCode),
   );
 }
 
-export async function generateBasicRTKSlice() {
+export async function generateBasicRTKSlice(options: GenerationOptions) {
   const { generateBasicRTKSlice } = await import("./generateBasicRTKSlice");
   const sourceCode = await generateBasicRTKSlice();
 
-  const outputFile = "/Users/kriti/celestial/ex/code-gen-test/cache.ts";
+  const outputFolder = options.outputFolder;
+  const outputFile = path.join(outputFolder, "cache.ts");
+
+  // const outputFile = "/Users/kriti/celestial/ex/code-gen-test/cache.ts";
   fs.writeFileSync(
     path.resolve(process.cwd(), outputFile),
     await prettify(outputFile, sourceCode),
