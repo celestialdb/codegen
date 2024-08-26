@@ -49,11 +49,13 @@ export function generateImportNode(
 }
 
 export function generateCreateApiCall({
+  server,
   identifier,
   endpointBuilder = defaultEndpointBuilder,
   endpointDefinitions,
   tags,
 }: {
+  server: string;
   identifier: string;
   endpointBuilder?: ts.Identifier;
   endpointDefinitions: ts.ObjectLiteralExpression;
@@ -61,7 +63,7 @@ export function generateCreateApiCall({
 }) {
   const baseQueryLiteralExpression = factory.createObjectLiteralExpression(
     generateObjectProperties({
-      baseUrl: factory.createStringLiteral("https://api.example.com"),
+      baseUrl: factory.createStringLiteral(server),
     }),
   );
 
@@ -421,18 +423,17 @@ export function generateEndpointDefinition({
     );
   }
 
-  // if the ednpoint is the endpointToIndex, then generates:
+  // if the endpoint is the endpointToIndex, then generates:
   /*
         transformResponse: (responseData:Task[]) => {
                 return entryAdapter.setAll(initialState, responseData)
             },
      */
-
-  function adhocTypeGen() {
-    // operation name is like so "getTasks"
-    // returns "Task[]"
-    return operationName.replace("get", "").slice(0, -1) + "[]";
-  }
+  // function adhocTypeGen() {
+  //   // operation name is like so "getTasks"
+  //   // returns "Task[]"
+  //   return operationName.replace("get", "").slice(0, -1) + "[]";
+  // }
 
   if (isEndpointToIndex) {
     objectProperties.push(
@@ -447,10 +448,11 @@ export function generateEndpointDefinition({
               undefined,
               factory.createIdentifier("responseData"),
               undefined,
-              factory.createTypeReferenceNode(
-                factory.createIdentifier(adhocTypeGen()),
-                undefined,
-              ),
+              // factory.createTypeReferenceNode(
+              //   factory.createIdentifier(adhocTypeGen()),
+              //   undefined,
+              // ),
+              Response,
               undefined,
             ),
           ],

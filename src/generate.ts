@@ -148,7 +148,6 @@ export async function generateApi(
   const subsetOperationDefinitions = operationDefinitions.filter(
     (operationDefinition) => {
       const temp = operationDefinition.operation;
-      console.log("---- x-celestial-grouping: ", temp);
       // @ts-ignore
       return temp["x-celestial-grouping"] === key;
     },
@@ -212,6 +211,8 @@ export async function generateApi(
         generateCreateEntityAdapterCall(),
         generateInitializeInitialState(),
         generateCreateApiCall({
+          // @ts-ignore
+          server: apiGen.spec.servers[0].url,
           identifier: key,
           tags: tag
             ? extractAllTagTypes({
