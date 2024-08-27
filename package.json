@@ -1,10 +1,10 @@
 {
-  "name": "@celestial_labs/codegen-openapi",
-  "version": "0.1.0",
+  "name": "@celestial-labs/codegen-openapi",
+  "version": "0.1.2",
   "main": "lib/index.js",
   "types": "lib/index.d.ts",
   "bin": {
-    "celestial_labs-codegen-openapi": "lib/bin/cli.js"
+    "celestial-labs-codegen-openapi": "lib/bin/cli.js"
   },
   "scripts": {
     "build": "tsc && chmod +x lib/bin/cli.js",
