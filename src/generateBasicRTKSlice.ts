@@ -12,6 +12,7 @@ function generateSliceExpressions(): ts.Statement[] {
                 updateCache: {
                     reducer(state, action) {
                         const { key, value } = action.payload
+                        // @ts-ignore
                         state[key] = value
                     },
                     prepare(key, value) {
@@ -25,13 +26,14 @@ function generateSliceExpressions(): ts.Statement[] {
 
         export const { updateCache } = cache.actions
         export default cache.reducer
-        export const selectCache = (state) => state.cache
+        export const selectCache = (state:any) => state.cache
      */
 
   // generates:
   /*
         reducer(state, action) {
             const { key, value } = action.payload
+            // @ts-ignore
             state[key] = value
         }
      */
@@ -79,6 +81,12 @@ function generateSliceExpressions(): ts.Statement[] {
         factory.createToken(ts.SyntaxKind.EqualsToken),
         valueIdentifier,
       ),
+    );
+    ts.addSyntheticLeadingComment(
+      assignment,
+      ts.SyntaxKind.SingleLineCommentTrivia,
+      "@ts-ignore",
+      true,
     );
 
     return factory.createBlock([destructureKeyValue, assignment], true);
@@ -283,9 +291,9 @@ function generateSliceExpressions(): ts.Statement[] {
 
   // generates:
   /*
-        export const selectCache = (state) => state.cache
+        export const selectCache = (state:any) => state.cache
      */
-  const createAndexportSelectorExpression = factory.createVariableStatement(
+  const createAndExportSelectorExpression = factory.createVariableStatement(
     [factory.createModifier(ts.SyntaxKind.ExportKeyword)],
     factory.createVariableDeclarationList(
       [
@@ -302,7 +310,7 @@ function generateSliceExpressions(): ts.Statement[] {
                 undefined,
                 factory.createIdentifier("state"),
                 undefined,
-                undefined,
+                factory.createKeywordTypeNode(ts.SyntaxKind.AnyKeyword),
                 undefined,
               ),
             ],
@@ -322,7 +330,7 @@ function generateSliceExpressions(): ts.Statement[] {
   return [
     sliceExpression,
     ...sliceExportExpressions,
-    createAndexportSelectorExpression,
+    createAndExportSelectorExpression,
   ];
 }
 
@@ -340,6 +348,7 @@ export async function generateBasicRTKSlice() {
                 updateCache: {
                     reducer(state, action) {
                         const { key, value } = action.payload
+                        // @ts-ignore
                         state[key] = value
                     },
                     prepare(key, value) {
@@ -353,7 +362,7 @@ export async function generateBasicRTKSlice() {
 
         export const { updateCache } = cache.actions
         export default cache.reducer
-        export const selectCache = (state) => state.cache
+        export const selectCache = (state:any) => state.cache
 
      */
 

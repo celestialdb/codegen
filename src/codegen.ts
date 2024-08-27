@@ -190,7 +190,7 @@ export function generateBaseSelectors(
 ) {
   // this function generates the following code from the sample code:
   /*
-        const selectEntryResult = (state) =>
+        const selectEntryResult = (state:any) =>
             tasksApiSlice.endpoints.getTasks.select()(state).data
 
         const entrySelectors = entryAdapter.getSelectors(
@@ -201,7 +201,7 @@ export function generateBaseSelectors(
         export const selectTodoById = entrySelectors.selectById
      */
 
-  // generates: const selectEntryResult = (state) =>
+  // generates: const selectEntryResult = (state:any) =>
   //             tasksApiSlice.endpoints.getTasks.select()(state).data
   const pickDataLiteralExpression = factory.createVariableStatement(
     undefined,
@@ -220,7 +220,7 @@ export function generateBaseSelectors(
                 undefined,
                 factory.createIdentifier(reduxIdentifiers.state),
                 undefined,
-                undefined,
+                factory.createKeywordTypeNode(ts.SyntaxKind.AnyKeyword),
               ),
             ],
             undefined,
