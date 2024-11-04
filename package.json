@@ -13,7 +13,7 @@
     "test:update": "jest --runInBand --updateSnapshot",
     "test:update:enum": "lib/bin/cli.js test/config.example.enum.ts",
     "test": "jest --runInBand",
-    "cli": "esr src/bin/cli.ts"
+    "cli": "esr src/bin/deleteEventually.ts"
   },
   "files": [
     "lib",

@@ -1,5 +1,5 @@
 import fs from "node:fs";
-import path, { resolve } from "node:path";
+import path from "node:path";
 import type {
   CommonOptions,
   ConfigFile,
@@ -10,43 +10,49 @@ import { isValidUrl, prettify } from "./utils";
 import { generateApiSliceName } from "./utils/naming";
 export type { ConfigFile } from "./types";
 
-export async function generateEndpoints(
-  options: GenerationOptions,
+async function generateEndpoints(
+  tags: string[],
+  openAPISpec: string,
+  outputFolder: string,
 ): Promise<string | void> {
-  const identifier = options.key;
-  const schemaLocation = options.schemaFile;
-  const outputFolder = options.outputFolder;
+  const schemaAbsPath = isValidUrl(openAPISpec)
+    ? openAPISpec
+    : path.resolve(process.cwd(), openAPISpec);
 
-  const schemaAbsPath = isValidUrl(options.schemaFile)
-    ? options.schemaFile
-    : path.resolve(process.cwd(), schemaLocation);
+  for (let tag of tags) {
+    console.log("--- Generating RTK Api slice for collection: ", tag);
+    const options: GenerationOptions = {
+      schemaFile: openAPISpec,
+      outputFolder: outputFolder,
+      key: tag, // to be filled in later
+      hooks: true,
+      tag: true,
+    };
+    const identifier = options.key;
 
-  const sourceCode = await enforceOazapftsTsVersion(async () => {
-    const { generateApi } = await import("./generate");
-    return generateApi(schemaAbsPath, options);
-  });
+    const sourceCode = await enforceOazapftsTsVersion(async () => {
+      const { generateApi } = await import("./generate");
+      return generateApi(schemaAbsPath, options);
+    });
 
-  const outputFile = path.join(
-    // "/Users/kriti/celestial/ex/code-gen-test",
-    outputFolder,
-    `${generateApiSliceName(identifier)}.ts`,
-    // `${identifier}Data.ts`,
-  );
-  fs.writeFileSync(
-    path.resolve(process.cwd(), outputFile),
-    await prettify(outputFile, sourceCode),
-  );
+    const outputFile = path.join(
+      // "/Users/kriti/celestial/ex/code-gen-test",
+      outputFolder,
+      `${generateApiSliceName(identifier)}.ts`,
+      // `${identifier}Data.ts`,
+    );
+    fs.writeFileSync(
+      path.resolve(process.cwd(), outputFile),
+      await prettify(outputFile, sourceCode),
+    );
+  }
 }
 
-export async function generateStoreConfig(
-  tags: string[],
-  options: GenerationOptions,
-) {
+async function generateStoreConfig(tags: string[], outputFolder: string) {
   const { generateStore } = await import("./generateStore");
   // const tags = ["tasks", "colors", "status"]
   const sourceCode = await generateStore(tags);
 
-  const outputFolder = options.outputFolder;
   const outputFile = path.join(outputFolder, "store.ts");
 
   // const outputFile = "/Users/kriti/celestial/ex/code-gen-test/store.ts";
@@ -56,11 +62,10 @@ export async function generateStoreConfig(
   );
 }
 
-export async function generateBasicRTKSlice(options: GenerationOptions) {
+async function generateBasicRTKSlice(outputFolder: string) {
   const { generateBasicRTKSlice } = await import("./generateBasicRTKSlice");
   const sourceCode = await generateBasicRTKSlice();
 
-  const outputFolder = options.outputFolder;
   const outputFile = path.join(outputFolder, "cache.ts");
 
   // const outputFile = "/Users/kriti/celestial/ex/code-gen-test/cache.ts";
@@ -70,27 +75,48 @@ export async function generateBasicRTKSlice(options: GenerationOptions) {
   );
 }
 
-export async function generateIndexFile(options: GenerationOptions) {
-  const schemaLocation = options.schemaFile;
-
-  const schemaAbsPath = isValidUrl(options.schemaFile)
-    ? options.schemaFile
-    : path.resolve(process.cwd(), schemaLocation);
-
-  const { generateIndexFile } = await import("./generateIndexFile");
-  const sourceCode = await generateIndexFile(schemaAbsPath, options);
-
-  const outputFolder = options.outputFolder;
+async function generateIndexFile(
+  tags: string[],
+  OpenAPISpec: string,
+  outputFolder: string,
+) {
+  const schemaAbsPath = isValidUrl(OpenAPISpec)
+    ? OpenAPISpec
+    : path.resolve(process.cwd(), OpenAPISpec);
   const outputFile = path.join(outputFolder, "index.ts");
 
-  // const outputFile = "/Users/kriti/celestial/ex/code-gen-test/index.ts";
-  fs.appendFileSync(
+  const { generateIndexFile } = await import("./generateIndexFile");
+
+  const options: GenerationOptions = {
+    schemaFile: OpenAPISpec,
+    outputFolder: outputFolder,
+    key: "", // to be filled in later
+    hooks: true,
+    tag: true,
+  };
+
+  // generate for cache
+  console.log("--- Generating exports for cache");
+  const cacheExports = await generateIndexFile(true, schemaAbsPath, options);
+  fs.writeFileSync(
     path.resolve(process.cwd(), outputFile),
-    await prettify(outputFile, sourceCode),
+    await prettify(outputFile, cacheExports),
   );
+
+  console.log("--- Generating exports for RTK api slices");
+  // generate for tags
+  for (let tag of tags) {
+    options["key"] = tag.toLowerCase();
+    const sourceCode = await generateIndexFile(false, schemaAbsPath, options);
+    // const outputFile = "/Users/kriti/celestial/ex/code-gen-test/index.ts";
+    fs.appendFileSync(
+      path.resolve(process.cwd(), outputFile),
+      await prettify(outputFile, sourceCode),
+    );
+  }
 }
 
-export function parseConfig(fullConfig: ConfigFile) {
+function parseConfig(fullConfig: ConfigFile) {
   const outFiles: (CommonOptions & OutputFileOptions)[] = [];
 
   if ("outputFiles" in fullConfig) {
@@ -128,4 +154,30 @@ function enforceOazapftsTsVersion<T>(cb: () => T): T {
       delete require.cache[ozTsPath];
     }
   }
+}
+
+export async function generateRTKDefs(
+  tags: string[],
+  OpenAPISpec: string,
+  outputFolder: string,
+) {
+  console.log("Generation API slices");
+  await generateEndpoints(tags, OpenAPISpec, outputFolder);
+  console.log();
+
+  console.log("====================");
+  console.log("Generating entrypoint file");
+  await generateIndexFile(tags, OpenAPISpec, outputFolder);
+  console.log();
+
+  console.log("====================");
+  console.log("Generating store config");
+  await generateStoreConfig(tags, outputFolder);
+  console.log();
+
+  console.log("====================");
+  console.log("Generating basic RTK slice for local state management");
+  await generateBasicRTKSlice(outputFolder);
+  console.log();
+  // summary of generation
 }

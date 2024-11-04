@@ -345,6 +345,26 @@ function generateUseCacheInitFunction() {
           }, []);
         }
      */
+
+  const dispatchDeclaration = factory.createVariableDeclaration(
+    "dispatch",
+    undefined,
+    undefined,
+    ts.factory.createCallExpression(
+      ts.factory.createIdentifier("useDispatch"),
+      undefined,
+      [],
+    ),
+  );
+
+  const dispatchStatement = ts.factory.createVariableStatement(
+    undefined,
+    ts.factory.createVariableDeclarationList(
+      [dispatchDeclaration],
+      ts.NodeFlags.Const,
+    ),
+  );
+
   const useEffectExpression = factory.createExpressionStatement(
     factory.createCallExpression(
       factory.createIdentifier("useEffect"),
@@ -383,7 +403,10 @@ function generateUseCacheInitFunction() {
     ),
   );
 
-  const useEffectBlock = factory.createBlock([useEffectExpression], true);
+  const functionStatementBlock = factory.createBlock(
+    [dispatchStatement, useEffectExpression],
+    true,
+  );
 
   return factory.createFunctionDeclaration(
     [factory.createModifier(ts.SyntaxKind.ExportKeyword)],
@@ -409,7 +432,7 @@ function generateUseCacheInitFunction() {
       ),
     ],
     undefined,
-    useEffectBlock,
+    functionStatementBlock,
   );
 }
 
@@ -424,6 +447,25 @@ function generateUseCacheUpdateFunction() {
           };
         }
      */
+  const dispatchDeclaration = factory.createVariableDeclaration(
+    "dispatch",
+    undefined,
+    undefined,
+    ts.factory.createCallExpression(
+      ts.factory.createIdentifier("useDispatch"),
+      undefined,
+      [],
+    ),
+  );
+
+  const dispatchStatement = ts.factory.createVariableStatement(
+    undefined,
+    ts.factory.createVariableDeclarationList(
+      [dispatchDeclaration],
+      ts.NodeFlags.Const,
+    ),
+  );
+
   const returnStatement = factory.createReturnStatement(
     factory.createArrowFunction(
       undefined,
@@ -479,7 +521,7 @@ function generateUseCacheUpdateFunction() {
     undefined,
     [],
     undefined,
-    factory.createBlock([returnStatement]),
+    factory.createBlock([dispatchStatement, returnStatement]),
   );
 }
 
@@ -548,6 +590,12 @@ export async function generateBasicRTKSlice() {
         generateImportNode("@reduxjs/toolkit", {
           ["createSlice"]: "createSlice",
         }),
+        generateImportNode("react", {
+          ["useEffect"]: "useEffect",
+        }),
+        generateImportNode("react-redux", {
+          ["useDispatch"]: "useDispatch",
+        }),
         factory.createVariableStatement(
           undefined,
           factory.createVariableDeclarationList(
@@ -563,6 +611,8 @@ export async function generateBasicRTKSlice() {
           ),
         ),
         ...generateSliceExpressions(),
+        generateUseCacheInitFunction(),
+        generateUseCacheUpdateFunction(),
       ],
       factory.createToken(ts.SyntaxKind.EndOfFileToken),
       ts.NodeFlags.None,

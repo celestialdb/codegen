@@ -57,11 +57,9 @@ function operationMatches(pattern?: EndpointMatcher) {
 function generateSelectorExports(collectionKey: string) {
   const allSelectors: string[] = Object.keys(SelectorTypes)
     .filter((key) => isNaN(Number(key)))
-    .map(
-      (
-        selectorType, // @ts-ignore
-      ) =>
-        generateSelectorIdentifier(collectionKey, SelectorTypes[selectorType]),
+    .map((selectorType) =>
+      // @ts-ignore
+      generateSelectorIdentifier(collectionKey, SelectorTypes[selectorType]),
     );
   return generateExportNode(
     `./${generateApiSliceName(collectionKey)}`,
@@ -85,6 +83,7 @@ function generateHookExports(
 }
 
 export async function generateIndexFile(
+  generateForCache: boolean,
   spec: string,
   {
     key,
@@ -135,13 +134,23 @@ export async function generateIndexFile(
     ts.EmitHint.Unspecified,
     factory.createSourceFile(
       [
-        generateSelectorExports(key),
-        generateHookExports(key, subsetOperationDefinitions, endpointOverrides),
-        generateExportNode("./cache", [
-          "useCacheInit",
-          "useCacheUpdate",
-          "selectCache",
-        ]),
+        generateForCache
+          ? factory.createEmptyStatement()
+          : generateSelectorExports(key),
+        generateForCache
+          ? factory.createEmptyStatement()
+          : generateHookExports(
+              key,
+              subsetOperationDefinitions,
+              endpointOverrides,
+            ),
+        generateForCache
+          ? generateExportNode("./cache", [
+              "useCacheInit",
+              "useCacheUpdate",
+              "selectCache",
+            ])
+          : factory.createEmptyStatement(),
       ],
       factory.createToken(ts.SyntaxKind.EndOfFileToken),
       ts.NodeFlags.None,

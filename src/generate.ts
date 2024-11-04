@@ -199,7 +199,6 @@ export async function generateApi(
       [
         generateImportNode("@reduxjs/toolkit", {
           ["createEntityAdapter"]: "createEntityAdapter",
-          ["Dictionary"]: "Dictionary",
           ["EntityState"]: "EntityState",
         }),
         generateImportNode("@reduxjs/toolkit/query/react", {
