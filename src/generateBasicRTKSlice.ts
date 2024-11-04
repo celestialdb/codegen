@@ -252,13 +252,13 @@ function generateSliceExpressions(): ts.Statement[] {
 
   // generates:
   /*
-        export const { updateCache } = cache.actions
+        const { updateCache } = cache.actions
         export default cache.reducer
 
      */
   const sliceExportExpressions: ts.Statement[] = [
     factory.createVariableStatement(
-      [factory.createModifier(ts.SyntaxKind.ExportKeyword)],
+      [],
       factory.createVariableDeclarationList(
         [
           factory.createVariableDeclaration(
@@ -334,6 +334,155 @@ function generateSliceExpressions(): ts.Statement[] {
   ];
 }
 
+function generateUseCacheInitFunction() {
+  // generates:
+  /*
+        export function useCacheInit(key:string, value:any) {
+          const dispatch = useDispatch();
+
+          useEffect(() => {
+            dispatch(updateCache(key, value));
+          }, []);
+        }
+     */
+  const useEffectExpression = factory.createExpressionStatement(
+    factory.createCallExpression(
+      factory.createIdentifier("useEffect"),
+      undefined,
+      [
+        factory.createArrowFunction(
+          undefined,
+          undefined,
+          [],
+          undefined,
+          undefined,
+          factory.createBlock(
+            [
+              factory.createExpressionStatement(
+                factory.createCallExpression(
+                  factory.createIdentifier("dispatch"),
+                  undefined,
+                  [
+                    factory.createCallExpression(
+                      factory.createIdentifier("updateCache"),
+                      undefined,
+                      [
+                        factory.createIdentifier("key"),
+                        factory.createIdentifier("value"),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ],
+            true,
+          ),
+        ),
+        factory.createArrayLiteralExpression([], false),
+      ],
+    ),
+  );
+
+  const useEffectBlock = factory.createBlock([useEffectExpression], true);
+
+  return factory.createFunctionDeclaration(
+    [factory.createModifier(ts.SyntaxKind.ExportKeyword)],
+    undefined,
+    factory.createIdentifier("useCacheInit"),
+    undefined,
+    [
+      factory.createParameterDeclaration(
+        undefined,
+        undefined,
+        factory.createIdentifier("key"),
+        undefined,
+        factory.createKeywordTypeNode(ts.SyntaxKind.StringKeyword),
+        undefined,
+      ),
+      factory.createParameterDeclaration(
+        undefined,
+        undefined,
+        factory.createIdentifier("value"),
+        undefined,
+        factory.createKeywordTypeNode(ts.SyntaxKind.AnyKeyword),
+        undefined,
+      ),
+    ],
+    undefined,
+    useEffectBlock,
+  );
+}
+
+function generateUseCacheUpdateFunction() {
+  // generates:
+  /*
+        export function useCacheUpdate() {
+          const dispatch = useDispatch();
+
+          return (key: string, value: any) => {
+            dispatch(updateCache(key, value));
+          };
+        }
+     */
+  const returnStatement = factory.createReturnStatement(
+    factory.createArrowFunction(
+      undefined,
+      undefined,
+      [
+        factory.createParameterDeclaration(
+          undefined,
+          undefined,
+          factory.createIdentifier("key"),
+          undefined,
+          factory.createKeywordTypeNode(ts.SyntaxKind.StringKeyword),
+          undefined,
+        ),
+        factory.createParameterDeclaration(
+          undefined,
+          undefined,
+          factory.createIdentifier("value"),
+          undefined,
+          factory.createKeywordTypeNode(ts.SyntaxKind.AnyKeyword),
+          undefined,
+        ),
+      ],
+      undefined,
+      undefined,
+      factory.createBlock(
+        [
+          factory.createExpressionStatement(
+            factory.createCallExpression(
+              factory.createIdentifier("dispatch"),
+              undefined,
+              [
+                factory.createCallExpression(
+                  factory.createIdentifier("updateCache"),
+                  undefined,
+                  [
+                    factory.createIdentifier("key"),
+                    factory.createIdentifier("value"),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ],
+        true,
+      ),
+    ),
+  );
+
+  return factory.createFunctionDeclaration(
+    [factory.createModifier(ts.SyntaxKind.ExportKeyword)],
+    undefined,
+    factory.createIdentifier("useCacheUpdate"),
+    undefined,
+    [],
+    undefined,
+    factory.createBlock([returnStatement]),
+  );
+}
+
 export async function generateBasicRTKSlice() {
   // generates:
   /*
@@ -360,9 +509,26 @@ export async function generateBasicRTKSlice() {
             },
         })
 
-        export const { updateCache } = cache.actions
+        const { updateCache } = cache.actions
         export default cache.reducer
         export const selectCache = (state:any) => state.cache
+
+
+        export function useCacheInit(key:string, value:any) {
+          const dispatch = useDispatch();
+
+          useEffect(() => {
+            dispatch(updateCache(key, value));
+          }, []);
+        }
+
+        export function useCacheUpdate() {
+          const dispatch = useDispatch();
+
+          return (key: string, value: any) => {
+            dispatch(updateCache(key, value));
+          };
+        }
 
      */
 

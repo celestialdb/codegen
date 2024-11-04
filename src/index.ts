@@ -7,6 +7,7 @@ import type {
   OutputFileOptions,
 } from "./types";
 import { isValidUrl, prettify } from "./utils";
+import { generateApiSliceName } from "./utils/naming";
 export type { ConfigFile } from "./types";
 
 export async function generateEndpoints(
@@ -28,7 +29,8 @@ export async function generateEndpoints(
   const outputFile = path.join(
     // "/Users/kriti/celestial/ex/code-gen-test",
     outputFolder,
-    `${identifier}Data.ts`,
+    `${generateApiSliceName(identifier)}.ts`,
+    // `${identifier}Data.ts`,
   );
   fs.writeFileSync(
     path.resolve(process.cwd(), outputFile),
@@ -36,9 +38,13 @@ export async function generateEndpoints(
   );
 }
 
-export async function generateStoreConfig(options: GenerationOptions) {
+export async function generateStoreConfig(
+  tags: string[],
+  options: GenerationOptions,
+) {
   const { generateStore } = await import("./generateStore");
-  const sourceCode = await generateStore(["tasks", "colors", "status"]);
+  // const tags = ["tasks", "colors", "status"]
+  const sourceCode = await generateStore(tags);
 
   const outputFolder = options.outputFolder;
   const outputFile = path.join(outputFolder, "store.ts");
@@ -59,6 +65,26 @@ export async function generateBasicRTKSlice(options: GenerationOptions) {
 
   // const outputFile = "/Users/kriti/celestial/ex/code-gen-test/cache.ts";
   fs.writeFileSync(
+    path.resolve(process.cwd(), outputFile),
+    await prettify(outputFile, sourceCode),
+  );
+}
+
+export async function generateIndexFile(options: GenerationOptions) {
+  const schemaLocation = options.schemaFile;
+
+  const schemaAbsPath = isValidUrl(options.schemaFile)
+    ? options.schemaFile
+    : path.resolve(process.cwd(), schemaLocation);
+
+  const { generateIndexFile } = await import("./generateIndexFile");
+  const sourceCode = await generateIndexFile(schemaAbsPath, options);
+
+  const outputFolder = options.outputFolder;
+  const outputFile = path.join(outputFolder, "index.ts");
+
+  // const outputFile = "/Users/kriti/celestial/ex/code-gen-test/index.ts";
+  fs.appendFileSync(
     path.resolve(process.cwd(), outputFile),
     await prettify(outputFile, sourceCode),
   );

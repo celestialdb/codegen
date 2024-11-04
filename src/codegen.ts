@@ -2,7 +2,7 @@ import { factory } from "./utils/factory";
 import ts from "typescript";
 import { capitalize } from "./utils";
 import { reduxIdentifiers } from "./utils/reduxIdentifiers";
-import { generateReducerPath, generateApiSliceName } from "./utils/naming";
+import { generateApiSliceName, generateReducerPath } from "./utils/naming";
 
 const defaultEndpointBuilder = factory.createIdentifier("build");
 
@@ -45,6 +45,19 @@ export function generateImportNode(
       ),
     ),
     factory.createStringLiteral(pkg),
+  );
+}
+
+export function generateExportNode(moduleName: string, namedExports: string[]) {
+  const exportSpecifiers = namedExports.map((name) =>
+    ts.factory.createExportSpecifier(false, undefined, name),
+  );
+
+  return ts.factory.createExportDeclaration(
+    undefined,
+    false,
+    ts.factory.createNamedExports(exportSpecifiers),
+    ts.factory.createStringLiteral(moduleName),
   );
 }
 
@@ -184,6 +197,114 @@ export function generateInitializeInitialState() {
   );
 }
 
+export enum SelectorTypes {
+  selectEntities,
+  selectEntityById,
+  selectIds,
+}
+
+export function generateSelectorIdentifier(
+  identifier: string,
+  selectorType: SelectorTypes,
+): string {
+  // generates selectTodos, selectTodoIds, selectTodoById
+  return selectorType === SelectorTypes.selectEntities
+    ? "select" + capitalize(identifier)
+    : selectorType === SelectorTypes.selectIds
+      ? "select" + capitalize(identifier) + "Ids"
+      : "select" + capitalize(identifier) + "ById";
+}
+
+export function generateBaseSelectorsExportStatement(identifier: string) {
+  // this function generates the following code from the sample code:
+  /*
+        export const selectTodos = entrySelectors.selectAll
+        export const selectTodoIds = entrySelectors.selectIds
+        export const selectTodoById = entrySelectors.selectById
+     */
+
+  // generates: export const selectTodos = entrySelectors.selectAll
+  const selectAllSelectorLiteral = factory.createVariableStatement(
+    [factory.createModifier(ts.SyntaxKind.ExportKeyword)],
+    factory.createVariableDeclarationList(
+      [
+        factory.createVariableDeclaration(
+          factory.createIdentifier(
+            generateSelectorIdentifier(
+              identifier,
+              SelectorTypes.selectEntities,
+            ),
+          ),
+          undefined,
+          undefined,
+          factory.createPropertyAccessExpression(
+            factory.createIdentifier(
+              reduxIdentifiers.entrySelectorsForApiSliceData,
+            ),
+            factory.createIdentifier("selectAll"),
+          ),
+        ),
+      ],
+      ts.NodeFlags.Const,
+    ),
+  );
+
+  // generates: export const selectTodoIds = entrySelectors.selectIds
+  const selectIdsSelectorLiteral = factory.createVariableStatement(
+    [factory.createModifier(ts.SyntaxKind.ExportKeyword)],
+    factory.createVariableDeclarationList(
+      [
+        factory.createVariableDeclaration(
+          factory.createIdentifier(
+            generateSelectorIdentifier(identifier, SelectorTypes.selectIds),
+          ),
+          undefined,
+          undefined,
+          factory.createPropertyAccessExpression(
+            factory.createIdentifier(
+              reduxIdentifiers.entrySelectorsForApiSliceData,
+            ),
+            factory.createIdentifier("selectIds"),
+          ),
+        ),
+      ],
+      ts.NodeFlags.Const,
+    ),
+  );
+
+  // generates: export const selectTodoById = entrySelectors.selectById
+  const selectByIdSelectorLiteral = factory.createVariableStatement(
+    [factory.createModifier(ts.SyntaxKind.ExportKeyword)],
+    factory.createVariableDeclarationList(
+      [
+        factory.createVariableDeclaration(
+          factory.createIdentifier(
+            generateSelectorIdentifier(
+              identifier,
+              SelectorTypes.selectEntityById,
+            ),
+          ),
+          undefined,
+          undefined,
+          factory.createPropertyAccessExpression(
+            factory.createIdentifier(
+              reduxIdentifiers.entrySelectorsForApiSliceData,
+            ),
+            factory.createIdentifier("selectById"),
+          ),
+        ),
+      ],
+      ts.NodeFlags.Const,
+    ),
+  );
+
+  return [
+    selectAllSelectorLiteral,
+    selectIdsSelectorLiteral,
+    selectByIdSelectorLiteral,
+  ];
+}
+
 export function generateBaseSelectors(
   identifier: string,
   endpointToIndex: string,
@@ -313,75 +434,12 @@ export function generateBaseSelectors(
     ),
   );
 
-  // generates: export const selectTodos = entrySelectors.selectAll
-  const selectAllSelectorLiteral = factory.createVariableStatement(
-    [factory.createModifier(ts.SyntaxKind.ExportKeyword)],
-    factory.createVariableDeclarationList(
-      [
-        factory.createVariableDeclaration(
-          factory.createIdentifier("select" + capitalize(identifier)),
-          undefined,
-          undefined,
-          factory.createPropertyAccessExpression(
-            factory.createIdentifier(
-              reduxIdentifiers.entrySelectorsForApiSliceData,
-            ),
-            factory.createIdentifier("selectAll"),
-          ),
-        ),
-      ],
-      ts.NodeFlags.Const,
-    ),
-  );
-
-  // generates: export const selectTodoIds = entrySelectors.selectIds
-  const selectIdsSelectorLiteral = factory.createVariableStatement(
-    [factory.createModifier(ts.SyntaxKind.ExportKeyword)],
-    factory.createVariableDeclarationList(
-      [
-        factory.createVariableDeclaration(
-          factory.createIdentifier("select" + capitalize(identifier) + "Ids"),
-          undefined,
-          undefined,
-          factory.createPropertyAccessExpression(
-            factory.createIdentifier(
-              reduxIdentifiers.entrySelectorsForApiSliceData,
-            ),
-            factory.createIdentifier("selectIds"),
-          ),
-        ),
-      ],
-      ts.NodeFlags.Const,
-    ),
-  );
-
-  // generates: export const selectTodoById = entrySelectors.selectById
-  const selectByIdSelectorLiteral = factory.createVariableStatement(
-    [factory.createModifier(ts.SyntaxKind.ExportKeyword)],
-    factory.createVariableDeclarationList(
-      [
-        factory.createVariableDeclaration(
-          factory.createIdentifier("select" + capitalize(identifier) + "ById"),
-          undefined,
-          undefined,
-          factory.createPropertyAccessExpression(
-            factory.createIdentifier(
-              reduxIdentifiers.entrySelectorsForApiSliceData,
-            ),
-            factory.createIdentifier("selectById"),
-          ),
-        ),
-      ],
-      ts.NodeFlags.Const,
-    ),
-  );
+  const selectorExports = generateBaseSelectorsExportStatement(identifier);
 
   return [
     pickDataLiteralExpression,
     callPickDataLiteralExpression,
-    selectAllSelectorLiteral,
-    selectIdsSelectorLiteral,
-    selectByIdSelectorLiteral,
+    ...selectorExports,
   ];
 }
 
