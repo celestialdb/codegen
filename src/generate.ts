@@ -455,8 +455,8 @@ export async function generateApi(
     if (
       operationDefinition.operation.hasOwnProperty("x-celestial-updateByKey")
     ) {
-      // @ts-ignore
       optimisticPatchToApplyPK =
+        // @ts-ignore
         operationDefinition.operation["x-celestial-updateByKey"];
     }
 
@@ -466,6 +466,16 @@ export async function generateApi(
     const optimisticPatchKey = optimisticPatchKeyIntermediate
       ? optimisticPatchKeyIntermediate.name
       : undefined;
+    let indexResponseByKey = undefined;
+    if (
+      operationDefinition.operation.hasOwnProperty(
+        "x-celestial-index-endpoint-by-key",
+      )
+    ) {
+      // @ts-ignore
+      indexResponseByKey =
+        operationDefinition.operation["x-celestial-index-endpoint-by-key"];
+    }
 
     return generateEndpointDefinition({
       operationName,
@@ -474,6 +484,7 @@ export async function generateApi(
       optimisticPatchToApplyPK: optimisticPatchToApplyPK,
       optimisticPatchKey: optimisticPatchKey,
       isEndpointToIndex: operationName === endpointToIndex,
+      indexResponseByKey: indexResponseByKey,
       type: isQuery ? "query" : "mutation",
       Response: ResponseTypeName,
       QueryArg,

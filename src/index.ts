@@ -106,7 +106,7 @@ async function generateIndexFile(
   console.log("--- Generating exports for RTK api slices");
   // generate for tags
   for (let tag of tags) {
-    options["key"] = tag.toLowerCase();
+    options["key"] = tag;
     const sourceCode = await generateIndexFile(false, schemaAbsPath, options);
     // const outputFile = "/Users/kriti/celestial/ex/code-gen-test/index.ts";
     fs.appendFileSync(

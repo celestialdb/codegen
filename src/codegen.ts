@@ -169,8 +169,17 @@ export function generateCreateEntityAdapterCall() {
 export function generateInitializeInitialState() {
   // this function generates the following code from the sample code:
   /*
-        const initialState : EntityState<any> = entityAdapter.getInitialState()
+        const initialState : EntityState<any> = entityAdapter.getInitialState({ids:[], entities:{}})
      */
+
+  const argsArray = [
+    factory.createObjectLiteralExpression(
+      generateObjectProperties({
+        ids: factory.createArrayLiteralExpression([]),
+        entities: factory.createObjectLiteralExpression([]),
+      }),
+    ),
+  ];
 
   return factory.createVariableStatement(
     undefined,
@@ -189,7 +198,7 @@ export function generateInitializeInitialState() {
               factory.createIdentifier(reduxIdentifiers.getInitialState),
             ),
             undefined,
-            [],
+            argsArray,
           ),
         ),
       ],
@@ -451,6 +460,7 @@ export function generateEndpointDefinition({
   optimisticPatchToApplyPK,
   optimisticPatchKey,
   isEndpointToIndex,
+  indexResponseByKey,
   type,
   Response,
   QueryArg,
@@ -465,6 +475,7 @@ export function generateEndpointDefinition({
   optimisticPatchToApplyPK: string | undefined;
   optimisticPatchKey: string | undefined;
   isEndpointToIndex: boolean;
+  indexResponseByKey: string | undefined;
   type: "query" | "mutation";
   Response: ts.TypeReferenceNode;
   QueryArg: ts.TypeReferenceNode;
@@ -496,10 +507,10 @@ export function generateEndpointDefinition({
     if (optimisticPatchToApplyPK === undefined) {
       optimisticPatchToApplyPK = "id";
     }
-    // @ts-ignore
     const optimisticUpdateGenerator = new OptimisticUpdateCodeGenerator(
       verb,
       cacheKeyToOptimisticallyUpdate,
+      // @ts-ignore
       optimisticPatchKey,
       optimisticPatchToApplyPK,
     );
@@ -512,13 +523,17 @@ export function generateEndpointDefinition({
                 return entryAdapter.setAll(initialState, responseData)
             },
      */
-  // function adhocTypeGen() {
-  //   // operation name is like so "getTasks"
-  //   // returns "Task[]"
-  //   return operationName.replace("get", "").slice(0, -1) + "[]";
-  // }
 
   if (isEndpointToIndex) {
+    let responseDataKeyToIndexExpression: ts.Expression =
+      factory.createIdentifier("responseData");
+    if (indexResponseByKey !== undefined) {
+      responseDataKeyToIndexExpression = factory.createPropertyAccessExpression(
+        factory.createIdentifier("responseData"),
+        factory.createIdentifier(indexResponseByKey),
+      );
+    }
+
     objectProperties.push(
       factory.createPropertyAssignment(
         factory.createIdentifier("transformResponse"),
@@ -531,10 +546,6 @@ export function generateEndpointDefinition({
               undefined,
               factory.createIdentifier("responseData"),
               undefined,
-              // factory.createTypeReferenceNode(
-              //   factory.createIdentifier(adhocTypeGen()),
-              //   undefined,
-              // ),
               Response,
               undefined,
             ),
@@ -549,7 +560,7 @@ export function generateEndpointDefinition({
             undefined,
             [
               factory.createIdentifier(reduxIdentifiers.initalStateVarName),
-              factory.createIdentifier("responseData"),
+              responseDataKeyToIndexExpression,
             ],
           ),
         ),
