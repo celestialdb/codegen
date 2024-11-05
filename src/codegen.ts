@@ -3,6 +3,7 @@ import ts from "typescript";
 import { capitalize } from "./utils";
 import { reduxIdentifiers } from "./utils/reduxIdentifiers";
 import { generateApiSliceName, generateReducerPath } from "./utils/naming";
+import { OptimisticUpdateCodeGenerator } from "./generators/optimistic-updates";
 
 const defaultEndpointBuilder = factory.createIdentifier("build");
 
@@ -445,6 +446,10 @@ export function generateBaseSelectors(
 
 export function generateEndpointDefinition({
   operationName,
+  verb,
+  cacheKeyToOptimisticallyUpdate,
+  optimisticPatchToApplyPK,
+  optimisticPatchKey,
   isEndpointToIndex,
   type,
   Response,
@@ -455,6 +460,10 @@ export function generateEndpointDefinition({
   tags,
 }: {
   operationName: string;
+  verb: string;
+  cacheKeyToOptimisticallyUpdate: string;
+  optimisticPatchToApplyPK: string | undefined;
+  optimisticPatchKey: string | undefined;
   isEndpointToIndex: boolean;
   type: "query" | "mutation";
   Response: ts.TypeReferenceNode;
@@ -479,6 +488,22 @@ export function generateEndpointDefinition({
         ),
       ),
     );
+  }
+
+  // if mutation endpoint, generate optimistic update code
+  let optimisticUpdateMethodDeclaration = undefined;
+  if (type === "mutation") {
+    if (optimisticPatchToApplyPK === undefined) {
+      optimisticPatchToApplyPK = "id";
+    }
+    // @ts-ignore
+    const optimisticUpdateGenerator = new OptimisticUpdateCodeGenerator(
+      verb,
+      cacheKeyToOptimisticallyUpdate,
+      optimisticPatchKey,
+      optimisticPatchToApplyPK,
+    );
+    optimisticUpdateMethodDeclaration = optimisticUpdateGenerator.generate();
   }
 
   // if the endpoint is the endpointToIndex, then generates:
@@ -532,6 +557,16 @@ export function generateEndpointDefinition({
     );
   }
 
+  let argsArray;
+  if (optimisticUpdateMethodDeclaration !== undefined) {
+    argsArray = factory.createObjectLiteralExpression(
+      [optimisticUpdateMethodDeclaration, ...objectProperties],
+      true,
+    );
+  } else {
+    argsArray = factory.createObjectLiteralExpression(objectProperties, true);
+  }
+
   return factory.createPropertyAssignment(
     factory.createIdentifier(operationName),
 
@@ -549,7 +584,7 @@ export function generateEndpointDefinition({
           : Response,
         QueryArg,
       ],
-      [factory.createObjectLiteralExpression(objectProperties, true)],
+      [argsArray],
     ),
   );
 }

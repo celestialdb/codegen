@@ -449,8 +449,30 @@ export async function generateApi(
       ).name,
     );
 
+    // error: Type of operationDefinition.operation object does not have key x-celestial-updateByKey
+    // would need to define new object inheriting OpenAPIV3.OperationObject
+    let optimisticPatchToApplyPK = undefined;
+    if (
+      operationDefinition.operation.hasOwnProperty("x-celestial-updateByKey")
+    ) {
+      // @ts-ignore
+      optimisticPatchToApplyPK =
+        operationDefinition.operation["x-celestial-updateByKey"];
+    }
+
+    const optimisticPatchKeyIntermediate = Object.values(queryArg).find(
+      (def) => def.origin === "body",
+    );
+    const optimisticPatchKey = optimisticPatchKeyIntermediate
+      ? optimisticPatchKeyIntermediate.name
+      : undefined;
+
     return generateEndpointDefinition({
       operationName,
+      verb: operationDefinition.verb,
+      cacheKeyToOptimisticallyUpdate: endpointToIndex,
+      optimisticPatchToApplyPK: optimisticPatchToApplyPK,
+      optimisticPatchKey: optimisticPatchKey,
       isEndpointToIndex: operationName === endpointToIndex,
       type: isQuery ? "query" : "mutation",
       Response: ResponseTypeName,
