@@ -2,21 +2,33 @@ import * as ts from "typescript";
 import { factory, SyntaxKind } from "typescript";
 
 export class OptimisticUpdateCodeGenerator {
+  private RTKSliceName: string;
   private verb: string;
   private cacheKeyToUpdate: string;
   private updateObjectKey: string;
   private endpointPk: string;
 
   public constructor(
+    RTKSliceName: string,
     verb: string,
     cacheKeyToUpdate: string,
     updateObjectKey: string,
     endpointPk: string,
   ) {
+    this.RTKSliceName = RTKSliceName;
     this.verb = verb;
     this.cacheKeyToUpdate = cacheKeyToUpdate;
     this.updateObjectKey = updateObjectKey;
     this.endpointPk = endpointPk;
+    if (this.endpointPk === undefined) {
+      if (verb !== "post") {
+        throw new Error(
+          `x-celestial-updateByKey is required for non-POST verbs`,
+        );
+      } else {
+        this.endpointPk = "id";
+      }
+    }
   }
 
   public generate() {
@@ -46,7 +58,7 @@ export class OptimisticUpdateCodeGenerator {
         factory.createCallExpression(
           factory.createPropertyAccessExpression(
             factory.createPropertyAccessExpression(
-              factory.createIdentifier("tasksData"),
+              factory.createIdentifier(this.RTKSliceName),
               factory.createIdentifier("util"),
             ),
             factory.createIdentifier("updateQueryData"),
@@ -66,7 +78,7 @@ export class OptimisticUpdateCodeGenerator {
                 ),
               ],
               undefined,
-              ts.factory.createToken(ts.SyntaxKind.EqualsGreaterThanToken), // Arrow `=>` token
+              factory.createToken(ts.SyntaxKind.EqualsGreaterThanToken), // Arrow `=>` token
               cacheModificationBlock,
             ),
           ],
@@ -92,7 +104,7 @@ export class OptimisticUpdateCodeGenerator {
           undefined,
           factory.createObjectBindingPattern([
             factory.createBindingElement(
-              ts.factory.createToken(ts.SyntaxKind.DotDotDotToken),
+              factory.createToken(ts.SyntaxKind.DotDotDotToken),
               undefined,
               factory.createIdentifier("patch"),
             ),
@@ -123,6 +135,40 @@ export class OptimisticUpdateCodeGenerator {
     );
 
     return functionExpression;
+  }
+
+  private generateIdToUpdateCacheBy(): ts.PropertyAccessExpression {
+    // check if this.endpointPk is of the form
+    // parameters.id or requestBody.id
+    const updateKeyPath = this.endpointPk.split(".");
+    if (
+      !(
+        updateKeyPath.length === 2 &&
+        (updateKeyPath[0] === "parameters" ||
+          updateKeyPath[0] === "requestBody")
+      )
+    ) {
+      throw new Error(
+        `x-celestial-updateByKey must be of the form parameters.id or requestBody.id. You have provided: ${this.endpointPk}`,
+      );
+    }
+
+    if (updateKeyPath[0] === "requestBody") {
+      // return patch.updateObjectKey.endpointPk[1]
+      return factory.createPropertyAccessExpression(
+        factory.createPropertyAccessExpression(
+          factory.createIdentifier("patch"),
+          factory.createIdentifier(this.updateObjectKey),
+        ),
+        factory.createIdentifier(updateKeyPath[1]),
+      );
+    } else {
+      // return patch.endpointPk[1]
+      return factory.createPropertyAccessExpression(
+        factory.createIdentifier("patch"),
+        factory.createIdentifier(updateKeyPath[1]),
+      );
+    }
   }
 
   private generatePost(): ts.Block {
@@ -216,29 +262,23 @@ export class OptimisticUpdateCodeGenerator {
             const replacement = cache.entities[patch.updateTaskColor.task_id]
             // upsert patch into replacement
           Object.assign(replacement, patch.updateTaskColor)
-          Object.assign(cache.entities, replacement)
+          Object.assign(cache.entities[patch.updateTaskColor.task_id], replacement);
          */
 
-    const replacementDeclaration = ts.factory.createVariableStatement(
+    const replacementDeclaration = factory.createVariableStatement(
       undefined,
-      ts.factory.createVariableDeclarationList(
+      factory.createVariableDeclarationList(
         [
-          ts.factory.createVariableDeclaration(
+          factory.createVariableDeclaration(
             "replacement",
             undefined,
             undefined,
-            ts.factory.createElementAccessExpression(
-              ts.factory.createPropertyAccessExpression(
-                ts.factory.createIdentifier("cache"),
-                ts.factory.createIdentifier("entities"),
+            factory.createElementAccessExpression(
+              factory.createPropertyAccessExpression(
+                factory.createIdentifier("cache"),
+                factory.createIdentifier("entities"),
               ),
-              ts.factory.createPropertyAccessExpression(
-                ts.factory.createPropertyAccessExpression(
-                  ts.factory.createIdentifier("patch"),
-                  ts.factory.createIdentifier(this.updateObjectKey),
-                ),
-                ts.factory.createIdentifier(this.endpointPk),
-              ),
+              this.generateIdToUpdateCacheBy(),
             ),
           ),
         ],
@@ -271,9 +311,12 @@ export class OptimisticUpdateCodeGenerator {
         ),
         undefined,
         [
-          factory.createPropertyAccessExpression(
-            factory.createIdentifier("cache"),
-            factory.createIdentifier("entities"),
+          factory.createElementAccessExpression(
+            factory.createPropertyAccessExpression(
+              factory.createIdentifier("cache"),
+              factory.createIdentifier("entities"),
+            ),
+            this.generateIdToUpdateCacheBy(),
           ),
           factory.createIdentifier("replacement"),
         ],
@@ -295,35 +338,27 @@ export class OptimisticUpdateCodeGenerator {
     /*
             const index = cache.ids.indexOf(patch.deleteTask.task_id);
               cache.ids.splice(index, 1);
-              delete cache.entities[task_id]
+              delete cache.entities[patch.deleteTask.task_id]
          */
 
-    const indexToDeleteAssignment = ts.factory.createVariableStatement(
+    const indexToDeleteAssignment = factory.createVariableStatement(
       undefined,
-      ts.factory.createVariableDeclarationList(
+      factory.createVariableDeclarationList(
         [
-          ts.factory.createVariableDeclaration(
+          factory.createVariableDeclaration(
             "index",
             undefined,
             undefined,
-            ts.factory.createCallExpression(
-              ts.factory.createPropertyAccessExpression(
-                ts.factory.createPropertyAccessExpression(
-                  ts.factory.createIdentifier("cache"),
-                  ts.factory.createIdentifier("ids"),
+            factory.createCallExpression(
+              factory.createPropertyAccessExpression(
+                factory.createPropertyAccessExpression(
+                  factory.createIdentifier("cache"),
+                  factory.createIdentifier("ids"),
                 ),
                 factory.createIdentifier("indexOf"),
               ),
               undefined,
-              [
-                ts.factory.createPropertyAccessExpression(
-                  ts.factory.createPropertyAccessExpression(
-                    ts.factory.createIdentifier("patch"),
-                    ts.factory.createIdentifier(this.updateObjectKey),
-                  ),
-                  ts.factory.createIdentifier(this.endpointPk),
-                ),
-              ],
+              [this.generateIdToUpdateCacheBy()],
             ),
           ),
         ],
@@ -352,13 +387,7 @@ export class OptimisticUpdateCodeGenerator {
             factory.createIdentifier("cache"),
             factory.createIdentifier("entities"),
           ),
-          factory.createPropertyAccessExpression(
-            factory.createPropertyAccessExpression(
-              factory.createIdentifier("patch"),
-              factory.createIdentifier(this.updateObjectKey),
-            ),
-            factory.createIdentifier(this.endpointPk),
-          ),
+          this.generateIdToUpdateCacheBy(),
         ),
       ),
     );

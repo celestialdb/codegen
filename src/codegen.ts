@@ -455,9 +455,10 @@ export function generateBaseSelectors(
 
 export function generateEndpointDefinition({
   operationName,
+  RTKSliceName,
   verb,
   cacheKeyToOptimisticallyUpdate,
-  optimisticPatchToApplyPK,
+  optimisticPatchToApplyKey,
   optimisticPatchKey,
   isEndpointToIndex,
   indexResponseByKey,
@@ -470,9 +471,10 @@ export function generateEndpointDefinition({
   tags,
 }: {
   operationName: string;
+  RTKSliceName: string;
   verb: string;
   cacheKeyToOptimisticallyUpdate: string;
-  optimisticPatchToApplyPK: string | undefined;
+  optimisticPatchToApplyKey: string | undefined;
   optimisticPatchKey: string | undefined;
   isEndpointToIndex: boolean;
   indexResponseByKey: string | undefined;
@@ -504,15 +506,17 @@ export function generateEndpointDefinition({
   // if mutation endpoint, generate optimistic update code
   let optimisticUpdateMethodDeclaration = undefined;
   if (type === "mutation") {
-    if (optimisticPatchToApplyPK === undefined) {
-      optimisticPatchToApplyPK = "id";
-    }
+    // if (optimisticPatchToApplyKey === undefined) {
+    //     if (verb !== 'post')
+    //   optimisticPatchToApplyKey = "requestBody.id";
+    // }
     const optimisticUpdateGenerator = new OptimisticUpdateCodeGenerator(
+      RTKSliceName,
       verb,
       cacheKeyToOptimisticallyUpdate,
       // @ts-ignore
       optimisticPatchKey,
-      optimisticPatchToApplyPK,
+      optimisticPatchToApplyKey,
     );
     optimisticUpdateMethodDeclaration = optimisticUpdateGenerator.generate();
   }

@@ -166,8 +166,12 @@ export async function generateApi(
     throw new Error(`No endpoint to index found for ${key}`);
   }
 
-  const endpointToIndex =
-    endpointToIndexOp.verb + capitalize(endpointToIndexOp.path.slice(1));
+  const endpointToIndex = getOperationName({
+    verb: endpointToIndexOp.verb,
+    path: endpointToIndexOp.path,
+    operation: endpointToIndexOp.operation,
+  });
+  // endpointToIndexOp.verb + capitalize(endpointToIndexOp.path.slice(1));
 
   const resultFile = ts.createSourceFile(
     "someFileName.ts",
@@ -451,11 +455,11 @@ export async function generateApi(
 
     // error: Type of operationDefinition.operation object does not have key x-celestial-updateByKey
     // would need to define new object inheriting OpenAPIV3.OperationObject
-    let optimisticPatchToApplyPK = undefined;
+    let optimisticPatchToApplyKey = undefined;
     if (
       operationDefinition.operation.hasOwnProperty("x-celestial-updateByKey")
     ) {
-      optimisticPatchToApplyPK =
+      optimisticPatchToApplyKey =
         // @ts-ignore
         operationDefinition.operation["x-celestial-updateByKey"];
     }
@@ -472,16 +476,17 @@ export async function generateApi(
         "x-celestial-index-endpoint-by-key",
       )
     ) {
-      // @ts-ignore
       indexResponseByKey =
+        // @ts-ignore
         operationDefinition.operation["x-celestial-index-endpoint-by-key"];
     }
 
     return generateEndpointDefinition({
       operationName,
+      RTKSliceName: generateApiSliceName(key),
       verb: operationDefinition.verb,
       cacheKeyToOptimisticallyUpdate: endpointToIndex,
-      optimisticPatchToApplyPK: optimisticPatchToApplyPK,
+      optimisticPatchToApplyKey: optimisticPatchToApplyKey,
       optimisticPatchKey: optimisticPatchKey,
       isEndpointToIndex: operationName === endpointToIndex,
       indexResponseByKey: indexResponseByKey,
